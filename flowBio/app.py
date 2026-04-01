@@ -675,11 +675,7 @@ def plot_production_curve(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def plot_opex_comparison(opex_base: float, opex_new: float,
-                         bopd: float, extra_bpd: float) -> go.Figure:
-    """
-    Gráfica de barras: comparativa de OPEX y revenue.
-    """
+def plot_opex_comparison(opex_base, opex_new, bopd, extra_bpd):
     categories  = ["OPEX Actual", "OPEX FlowBio", "Ganancia/bbl", "Success Fee/bbl"]
     values      = [opex_base, opex_new, opex_base * 0.19, 5.0]
     bar_colors  = [COLORS["red"], COLORS["green"], COLORS["amber"], COLORS["purple"]]
@@ -692,14 +688,22 @@ def plot_opex_comparison(opex_base: float, opex_new: float,
         textfont=dict(color=COLORS["text"], size=11),
     ))
 
+    # ESTE BLOQUE ES EL QUE DEBES REEMPLAZAR TOTALMENTE:
     fig.update_layout(
-        **LAYOUT_BASE,
+        paper_bgcolor=COLORS["bg"],
+        plot_bgcolor =COLORS["bg2"],
+        font         =dict(family="Courier New, monospace", color=COLORS["text"], size=11),
+        margin       =dict(l=50, r=20, t=40, b=50),
         height=300,
         yaxis_title="USD por barril",
         showlegend=False,
         bargap=0.35,
-        yaxis=dict(gridcolor=COLORS["border"], gridwidth=0.5,
-                   linecolor=COLORS["border"], tickprefix="$"),
+        yaxis=dict(
+            gridcolor=COLORS["border"], 
+            gridwidth=0.5,
+            linecolor=COLORS["border"], 
+            tickprefix="$"
+        ),
     )
     return fig
 
