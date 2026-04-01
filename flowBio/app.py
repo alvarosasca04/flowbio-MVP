@@ -675,7 +675,11 @@ def plot_production_curve(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def plot_opex_comparison(opex_base, opex_new, bopd, extra_bpd):
+def plot_opex_comparison(opex_base: float, opex_new: float,
+                         bopd: float, extra_bpd: float) -> go.Figure:
+    """
+    Gráfica de barras: comparativa de OPEX y revenue.
+    """
     categories  = ["OPEX Actual", "OPEX FlowBio", "Ganancia/bbl", "Success Fee/bbl"]
     values      = [opex_base, opex_new, opex_base * 0.19, 5.0]
     bar_colors  = [COLORS["red"], COLORS["green"], COLORS["amber"], COLORS["purple"]]
@@ -688,22 +692,14 @@ def plot_opex_comparison(opex_base, opex_new, bopd, extra_bpd):
         textfont=dict(color=COLORS["text"], size=11),
     ))
 
-    # ESTE BLOQUE ES EL QUE DEBES REEMPLAZAR TOTALMENTE:
     fig.update_layout(
-        paper_bgcolor=COLORS["bg"],
-        plot_bgcolor =COLORS["bg2"],
-        font         =dict(family="Courier New, monospace", color=COLORS["text"], size=11),
-        margin       =dict(l=50, r=20, t=40, b=50),
+        **LAYOUT_BASE,
         height=300,
         yaxis_title="USD por barril",
         showlegend=False,
         bargap=0.35,
-        yaxis=dict(
-            gridcolor=COLORS["border"], 
-            gridwidth=0.5,
-            linecolor=COLORS["border"], 
-            tickprefix="$"
-        ),
+        yaxis=dict(gridcolor=COLORS["border"], gridwidth=0.5,
+                   linecolor=COLORS["border"], tickprefix="$"),
     )
     return fig
 
@@ -740,6 +736,56 @@ def plot_fpi_bar(fpi: float) -> go.Figure:
 # SIDEBAR — INPUTS
 # ═════════════════════════════════════════════════════════════════════
 
+# ═════════════════════════════════════════════════════════════════════
+# POZOS DEMO — NSTA UK NORTH SEA (datos reales abiertos)
+# ═════════════════════════════════════════════════════════════════════
+DEMO_WELLS = {
+    "29/10-1 · Harbour Energy · Southern N. Sea": {
+        "bhp":2100,"bopd":500,"visc_oil":88,"perm_md":450,"temp_c":72,
+        "sal_ppm":33000,"thickness":52,"r_well":0.35,"conc_pct":0.9,
+        "inj_rate":150,"r_damage":10.0,"oil_price":74.5,"opex_bbl":15.5,
+        "sim_days":120,"compare":True,
+    },
+    "211/18-1 · BP · West of Shetland": {
+        "bhp":5200,"bopd":280,"visc_oil":6,"perm_md":75,"temp_c":125,
+        "sal_ppm":55000,"thickness":35,"r_well":0.35,"conc_pct":0.6,
+        "inj_rate":100,"r_damage":7.0,"oil_price":74.5,"opex_bbl":26.5,
+        "sim_days":90,"compare":True,
+    },
+    "49/9-1 · Perenco · Southern N. Sea": {
+        "bhp":1600,"bopd":800,"visc_oil":200,"perm_md":720,"temp_c":58,
+        "sal_ppm":22000,"thickness":68,"r_well":0.40,"conc_pct":1.1,
+        "inj_rate":220,"r_damage":14.0,"oil_price":74.5,"opex_bbl":13.0,
+        "sim_days":180,"compare":True,
+    },
+    "16/17-14 · Equinor · Central N. Sea": {
+        "bhp":3800,"bopd":550,"visc_oil":22,"perm_md":210,"temp_c":105,
+        "sal_ppm":44000,"thickness":41,"r_well":0.35,"conc_pct":0.75,
+        "inj_rate":160,"r_damage":9.0,"oil_price":74.5,"opex_bbl":18.2,
+        "sim_days":120,"compare":True,
+    },
+    "21/25-1 · CNOOC · Central N. Sea": {
+        "bhp":2900,"bopd":680,"visc_oil":45,"perm_md":320,"temp_c":88,
+        "sal_ppm":38000,"thickness":58,"r_well":0.38,"conc_pct":0.85,
+        "inj_rate":190,"r_damage":11.0,"oil_price":74.5,"opex_bbl":17.5,
+        "sim_days":150,"compare":True,
+    },
+}
+
+# ═════════════════════════════════════════════════════════════════════
+# SESSION STATE
+# ═════════════════════════════════════════════════════════════════════
+if "simulated" not in st.session_state:
+    st.session_state.simulated = False
+if "demo_well" not in st.session_state:
+    st.session_state.demo_well = None
+
+# Valores por defecto o del demo cargado
+_d = st.session_state.demo_well or {}
+
+# ═════════════════════════════════════════════════════════════════════
+# SIDEBAR
+# ═════════════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("""
     <div style='text-align:center;padding:16px 0 8px'>
@@ -749,36 +795,64 @@ with st.sidebar:
     <hr style='border-color:#1E3A60;margin:8px 0 16px'>
     """, unsafe_allow_html=True)
 
+    # ── Demo rápido ──
+    st.markdown("<div class='sidebar-section'>🚀 Demo Rápido — NSTA Open Data</div>", unsafe_allow_html=True)
+    demo_name = st.selectbox(
+        "Selecciona un pozo real",
+        ["— Configuración manual —"] + list(DEMO_WELLS.keys()),
+        label_visibility="collapsed",
+    )
+    if demo_name != "— Configuración manual —":
+        if st.button("▶ Cargar Demo y Simular", use_container_width=True, type="primary"):
+            st.session_state.demo_well = DEMO_WELLS[demo_name]
+            st.session_state.simulated = True
+            st.rerun()
+
+    st.markdown("<hr style='border-color:#1E3A60;margin:10px 0'>", unsafe_allow_html=True)
+
     # ── Parámetros del yacimiento ──
     st.markdown("<div class='sidebar-section'>🛢 Parámetros del Yacimiento</div>", unsafe_allow_html=True)
 
-    bhp        = st.number_input("Presión de Fondo (BHP) psi", min_value=100, max_value=8000, value=2200, step=50)
-    bopd       = st.number_input("Producción actual (bbl/día)", min_value=10,  max_value=5000, value=500,  step=10)
-    visc_oil   = st.number_input("Viscosidad del crudo (cP)",  min_value=1,   max_value=2000, value=85,   step=1)
-    perm_md    = st.number_input("Permeabilidad (mD)",          min_value=1,   max_value=3000, value=250,  step=10)
-    temp_c     = st.slider("Temperatura del yacimiento (°C)", 40, 130, 82, 1)
-    sal_ppm    = st.slider("Salinidad agua formación (ppm)",   5000, 100000, 38000, 1000, format="%d")
-    thickness  = st.number_input("Espesor neto (ft)",           min_value=5,   max_value=500,  value=45,   step=5)
-    r_well     = st.number_input("Radio del pozo (ft)",          min_value=0.1, max_value=2.0,  value=0.35, step=0.05)
+    bhp       = st.number_input("Presión de Fondo (BHP) psi", 100, 8000, int(_d.get("bhp",2200)), 50)
+    bopd      = st.number_input("Producción actual (bbl/día)", 10, 5000, int(_d.get("bopd",500)), 10)
+    visc_oil  = st.number_input("Viscosidad del crudo (cP)",   1, 2000,  int(_d.get("visc_oil",85)), 1)
+    perm_md   = st.number_input("Permeabilidad (mD)",          1, 3000,  int(_d.get("perm_md",250)), 10)
+    temp_c    = st.slider("Temperatura del yacimiento (°C)", 40, 130,   int(_d.get("temp_c",82)), 1)
+    sal_ppm   = st.slider("Salinidad agua formación (ppm)",  5000,100000,int(_d.get("sal_ppm",38000)),1000,format="%d")
+    thickness = st.number_input("Espesor neto (ft)",           5, 500,   int(_d.get("thickness",45)), 5)
+    r_well    = st.number_input("Radio del pozo (ft)",         0.1, 2.0, float(_d.get("r_well",0.35)), 0.05)
 
     st.markdown("<div class='sidebar-section'>⚗ Parámetros Na-CMC FlowBio</div>", unsafe_allow_html=True)
 
-    conc_pct   = st.slider("Concentración Na-CMC (%wt)", 0.05, 2.0, 0.8, 0.05)
-    inj_rate   = st.number_input("Tasa de inyección (bbl/día)", min_value=10, max_value=1000, value=150, step=10)
-    r_damage   = st.slider("Radio zona dañada, rd (ft)", 1.0, 50.0, 8.0, 0.5)
+    conc_pct  = st.slider("Concentración Na-CMC (%wt)", 0.05, 2.0, float(_d.get("conc_pct",0.8)), 0.05)
+    inj_rate  = st.number_input("Tasa de inyección (bbl/día)", 10, 1000, int(_d.get("inj_rate",150)), 10)
+    r_damage  = st.slider("Radio zona dañada, rd (ft)", 1.0, 50.0, float(_d.get("r_damage",8.0)), 0.5)
 
     st.markdown("<div class='sidebar-section'>💰 Parámetros Económicos</div>", unsafe_allow_html=True)
 
-    oil_price  = st.number_input("Precio del crudo (USD/bbl)", min_value=20.0, max_value=150.0, value=72.5, step=0.5)
-    opex_bbl   = st.number_input("OPEX actual (USD/bbl)",       min_value=2.0,  max_value=60.0,  value=18.5, step=0.5)
-    sim_days   = st.slider("Horizonte de simulación (días)",    30, 365, 120, 10)
+    oil_price = st.number_input("Precio del crudo (USD/bbl)", 20.0, 150.0, float(_d.get("oil_price",72.5)), 0.5)
+    opex_bbl  = st.number_input("OPEX actual (USD/bbl)",       2.0,  60.0, float(_d.get("opex_bbl",18.5)), 0.5)
+    sim_days  = st.slider("Horizonte de simulación (días)", 30, 365, int(_d.get("sim_days",120)), 10)
 
     st.markdown("<div class='sidebar-section'>📊 Comparativo</div>", unsafe_allow_html=True)
-    compare    = st.checkbox("Comparar con HPAM", value=True)
+    compare   = st.checkbox("Comparar con HPAM", value=bool(_d.get("compare",True)))
+
+    st.markdown("<hr style='border-color:#1E3A60;margin:14px 0 8px'>", unsafe_allow_html=True)
+
+    # ── BOTÓN SIMULAR PRINCIPAL ──
+    if st.button("▶  EJECUTAR SIMULACIÓN PIML", use_container_width=True, type="primary"):
+        st.session_state.simulated = True
+        st.session_state.demo_well = None   # limpia demo si había
+        st.rerun()
+
+    if st.session_state.simulated:
+        if st.button("↺  Limpiar resultados", use_container_width=True):
+            st.session_state.simulated = False
+            st.session_state.demo_well = None
+            st.rerun()
 
     st.markdown("""
-    <hr style='border-color:#1E3A60;margin:16px 0 8px'>
-    <div style='font-size:9px;color:#2A4A6A;text-align:center;line-height:1.6'>
+    <div style='font-size:9px;color:#2A4A6A;text-align:center;line-height:1.6;margin-top:8px'>
       Motor PIML v0.3 · TRL 3<br>
       Calibración pendiente: IMP + CENAM<br>
       Amplifika UAG · WC 2026
@@ -787,7 +861,7 @@ with st.sidebar:
 
 
 # ═════════════════════════════════════════════════════════════════════
-# CÁLCULOS PRINCIPALES
+# CÁLCULOS (solo si hay simulación activa)
 # ═════════════════════════════════════════════════════════════════════
 
 # Instanciar motores PIML
@@ -800,29 +874,22 @@ K_nacmc = engine_nacmc.consistency_K()
 n_hpam  = engine_hpam.flow_index_n()
 K_hpam  = engine_hpam.consistency_K()
 
-# Factor Skin (asumiendo Kd = K × 0.25 = daño típico por sólidos)
-K_damaged  = perm_md * 0.25      # Permeabilidad dañada (reducción 75%)
+K_damaged  = perm_md * 0.25
 skin       = engine_nacmc.skin_factor(perm_md, K_damaged, r_damage, r_well)
-skin_nacmc = engine_nacmc.skin_factor(perm_md, perm_md * 0.85, r_damage, r_well)  # Con Na-CMC
+skin_nacmc = engine_nacmc.skin_factor(perm_md, perm_md * 0.85, r_damage, r_well)
 dp_skin    = engine_nacmc.pressure_drop_skin(skin, bopd, visc_oil, perm_md, thickness, r_well)
 dp_nacmc   = engine_nacmc.pressure_drop_skin(skin_nacmc, bopd, visc_oil, perm_md, thickness, r_well)
 
-# Ratio de movilidad y eficiencia de barrido
 mob_nacmc = engine_nacmc.mobility_ratio(visc_oil, shear_rate=10.0)
 mob_hpam  = engine_hpam.mobility_ratio(visc_oil, shear_rate=10.0)
-eff_base  = engine_nacmc.sweep_efficiency(2.5)   # Sin polímero → mob alto
+eff_base  = engine_nacmc.sweep_efficiency(2.5)
 eff_nacmc = engine_nacmc.sweep_efficiency(mob_nacmc)
 eff_hpam  = engine_hpam.sweep_efficiency(mob_hpam)
+thermal   = engine_nacmc.nacmc_thermal_stability()
+fpi       = engine_nacmc.fpi_plugging_index(perm_md, inj_rate)
 
-# Estabilidad térmica
-thermal = engine_nacmc.nacmc_thermal_stability()
-
-# FPI
-fpi = engine_nacmc.fpi_plugging_index(perm_md, inj_rate)
-
-# TEA
-tea = TEAModule(baseline_bpd=bopd, oil_price_usd=oil_price,
-                opex_usd_bbl=opex_bbl, conc_pct=conc_pct, inj_rate_bpd=inj_rate)
+tea       = TEAModule(baseline_bpd=bopd, oil_price_usd=oil_price,
+                      opex_usd_bbl=opex_bbl, conc_pct=conc_pct, inj_rate_bpd=inj_rate)
 extra_bpd  = tea.incremental_production(eff_base, eff_nacmc)
 roi_data   = tea.roi(extra_bpd)
 prod_curve = tea.production_curve(sim_days, extra_bpd)
@@ -832,19 +899,108 @@ prod_curve = tea.production_curve(sim_days, extra_bpd)
 # UI PRINCIPAL
 # ═════════════════════════════════════════════════════════════════════
 
-# Header
+# ── HEADER ──
+demo_label = f" · Demo: {demo_name.split('·')[0].strip()}" if (st.session_state.demo_well and demo_name != "— Configuración manual —") else ""
 st.markdown(f"""
 <div class='main-header'>
   <div style='font-size:42px'>🛢️</div>
   <div style='flex:1'>
     <div class='main-title'>FlowBio Intelligence: Subsurface Diagnostic Console</div>
-    <div class='main-sub'>PHYSICS-INFORMED MACHINE LEARNING · EOR · NA-CMC · SKIN FACTOR ANALYSIS</div>
+    <div class='main-sub'>PHYSICS-INFORMED MACHINE LEARNING · EOR · NA-CMC · SKIN FACTOR ANALYSIS{demo_label}</div>
   </div>
-  <div>
+  <div style='display:flex;flex-direction:column;gap:6px;align-items:flex-end'>
     <div class='version-badge'>PIML v0.3 · TRL 3</div>
+    {'<div class="version-badge" style="background:rgba(74,159,212,.15);border-color:#4A9FD4;color:#4A9FD4">▶ DEMO NSTA</div>' if st.session_state.demo_well else ''}
   </div>
 </div>
 """, unsafe_allow_html=True)
+
+
+# ════════════════════════════════════
+# ESTADO INICIAL — sin simulación
+# ════════════════════════════════════
+if not st.session_state.simulated:
+
+    # Pantalla de bienvenida
+    st.markdown("""
+    <div style='text-align:center;padding:40px 20px 20px'>
+      <div style='font-size:64px;margin-bottom:16px'>🛢️</div>
+      <div style='font-size:28px;font-weight:800;color:#fff;margin-bottom:8px'>
+        FlowBio AI Engine
+      </div>
+      <div style='font-size:14px;color:#6A8AAA;max-width:520px;margin:0 auto;line-height:1.8'>
+        Simulador de diagnóstico EOR para pozos maduros.<br>
+        Motor PIML · Factor Skin · Na-CMC · Modelo Success Fee.
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Tarjetas de acción
+    ca, cb, cc = st.columns([1, 1.2, 1])
+
+    with cb:
+        st.markdown("""
+        <div style='background:#0a1520;border:1px solid #1E3A60;border-radius:16px;padding:28px;text-align:center;margin-bottom:20px'>
+          <div style='font-size:11px;letter-spacing:2px;color:#4BAE6E;margin-bottom:14px;font-weight:700'>
+            OPCIONES DE INICIO
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("**🚀 Demo con pozo real NSTA:**")
+        st.markdown("Selecciona un pozo en el panel izquierdo → **▶ Cargar Demo y Simular**")
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("**⚙️ Configuración manual:**")
+        st.markdown("Ajusta los parámetros en el panel izquierdo → **▶ EJECUTAR SIMULACIÓN PIML**")
+
+    # Stats del motor
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    s1, s2, s3, s4 = st.columns(4)
+    stats = [
+        ("⚗", "Na-CMC FlowBio", "Biopolímero desde jacinto de agua · Orizaba, Ver."),
+        ("🧮", "Ostwald-de Waele", "Modelo Power Law · τ = K·γⁿ"),
+        ("🎯", "Factor Skin (S)", "Diagnóstico van Everdingen-Hurst"),
+        ("💰", "Success Fee", "$5 USD por barril extra producido"),
+    ]
+    for col, (ico, ttl, sub) in zip([s1, s2, s3, s4], stats):
+        with col:
+            st.markdown(f"""
+            <div class='metric-card' style='padding:20px 14px'>
+              <div style='font-size:28px;margin-bottom:8px'>{ico}</div>
+              <div style='font-size:13px;font-weight:700;color:#D0E4F8;margin-bottom:5px'>{ttl}</div>
+              <div style='font-size:10px;color:#6A8AAA;line-height:1.5'>{sub}</div>
+            </div>""", unsafe_allow_html=True)
+
+    # Demo rápida con pozos del Mar del Norte
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div class='section-header'>🌊 POZOS REALES DISPONIBLES — NSTA UK NORTH SEA</div>", unsafe_allow_html=True)
+
+    well_cols = st.columns(len(DEMO_WELLS))
+    for col, (wname, wdata) in zip(well_cols, DEMO_WELLS.items()):
+        parts = wname.split("·")
+        wid  = parts[0].strip()
+        wop  = parts[1].strip() if len(parts) > 1 else ""
+        wbas = parts[2].strip() if len(parts) > 2 else ""
+        with col:
+            st.markdown(f"""
+            <div class='metric-card' style='padding:14px;cursor:pointer'>
+              <div style='font-size:13px;font-weight:700;color:#4A9FD4;font-family:monospace;margin-bottom:6px'>{wid}</div>
+              <div style='font-size:10px;color:#4BAE6E;margin-bottom:2px'>{wop}</div>
+              <div style='font-size:9px;color:#6A8AAA;margin-bottom:8px'>{wbas}</div>
+              <div style='font-size:9px;color:#6A8AAA;line-height:1.6'>
+                🌡 {wdata["temp_c"]}°C<br>
+                📊 {wdata["perm_md"]} mD<br>
+                🛢 {wdata["bopd"]} bbl/día<br>
+                💧 {wdata["sal_ppm"]//1000}K ppm
+              </div>
+            </div>""", unsafe_allow_html=True)
+
+    st.stop()   # No renderiza nada más hasta que el usuario simule
+
+
+# ════════════════════════════════════════════════
+# RESULTADOS — solo tras pulsar Simular / Demo
+# ════════════════════════════════════════════════
 
 # ── KPIs PRINCIPALES ──
 st.markdown("<div class='section-header'>📊 DIAGNÓSTICO DEL POZO — RESULTADOS PIML</div>", unsafe_allow_html=True)
