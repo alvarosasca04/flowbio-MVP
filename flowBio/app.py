@@ -1,14 +1,19 @@
 import streamlit as st
 import boto3
 import pandas as pd
+import io
 import plotly.express as px
 from datetime import datetime
+import warnings
+
+warnings.filterwarnings("ignore")
 
 # Configuración de la página
 st.set_page_config(page_title="FlowBio Intelligence", layout="wide", initial_sidebar_state="expanded")
 
 # Título principal
-st.title("📊 FlowBio Intelligence Dashboard")
+st.title("🧬 FlowBio Intelligence - PIML Dashboard")
+st.markdown("**Análisis Predictivo de Inyección Mejorada (EOR) - Na-CMC**")
 st.markdown("---")
 
 # Función para conectar a S3
@@ -35,7 +40,10 @@ def cargar_csv_s3(nombre_bucket, ruta_archivo):
     
     try:
         obj = s3.get_object(Bucket=nombre_bucket, Key=ruta_archivo)
-        df = pd.read_csv(obj['Body'])
+        # Mismo encoding que tu SageMaker
+        df = pd.read_csv(io.BytesIO(obj['Body'].read()), encoding='latin-1', low_memory=False)
+        # Limpiar columnas (por si acaso)
+        df.columns = df.columns.str.replace('ï»¿', '').str.replace('Ã¯Â»Â¿', '')
         st.success(f"✅ Datos cargados desde S3 a las {datetime.now().strftime('%H:%M:%S')}")
         return df
     except s3.exceptions.NoSuchKey:
@@ -49,24 +57,26 @@ def cargar_csv_s3(nombre_bucket, ruta_archivo):
 def crear_datos_demo():
     st.info("📌 Usando datos de demostración (modo fallback)")
     return pd.DataFrame({
-        'fecha': pd.date_range('2026-01-01', periods=30),
-        'valor': [100 + i*2.5 for i in range(30)],
-        'categoria': ['Demo'] * 30
+        'pozo': ['Demo-Pozo-1', 'Demo-Pozo-2', 'Demo-Pozo-3', 'Demo-Pozo-4', 'Demo-Pozo-5'],
+        'skin': [8.5, 12.3, 5.1, 15.8, 3.2],
+        'mejora_pct': [12.5, 18.3, 8.5, 22.1, 5.3],
+        'ahorro_anual': [45000, 65000, 28000, 78000, 15000],
+        'estado': ['ESTABLE', 'CRÍTICO', 'ESTABLE', 'CRÍTICO', 'ESTABLE']
     })
 
-# CONFIGURACIÓN - CAMBIA ESTOS VALORES
-nombre_bucket = "flowbio-data-lake-v2"  # Tu nombre de bucket S3
-ruta_archivo = "resultados/datos.csv"   # Ruta exacta donde guarda SageMaker el CSV
+# CONFIGURACIÓN - VALORES REALES
+nombre_bucket = "flowbio-data-lake-v2-627807503177-us-east-2-an"
+ruta_archivo = "resultados_piml.csv"  # SageMaker debe guardar aquí
 
 # Cargar datos
 df = cargar_csv_s3(nombre_bucket, ruta_archivo)
 
-if df is not None:
+if df is not None and not df.empty:
     # Pestañas del dashboard
-    tab1, tab2, tab3 = st.tabs(["📊 Datos", "📈 Gráficos", "📋 Información"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Datos", "📈 Gráficos", "🎯 Top Candidatos", "📋 Información"])
     
     with tab1:
-        st.subheader("Tabla de Datos")
+        st.subheader("Tabla de Resultados PIML")
         st.dataframe(df, use_container_width=True, height=400)
         
         # Botón para descargar CSV
@@ -74,37 +84,66 @@ if df is not None:
         st.download_button(
             label="⬇️ Descargar CSV",
             data=csv,
-            file_name="datos_flowbio.csv",
+            file_name="resultados_flowbio_piml.csv",
             mime="text/csv"
         )
     
     with tab2:
-        st.subheader("Visualización de Datos")
+        st.subheader("Visualización de Métricas PIML")
         
-        # Detectar columnas numéricas
-        columnas_numericas = df.select_dtypes(include=['number']).columns.tolist()
-        
-        if len(columnas_numericas) > 0:
-            col_y = st.selectbox("Selecciona columna para graficar:", columnas_numericas)
-            
-            # Gráfico de línea
-            fig = px.line(df, y=col_y, markers=True, title=f"Evolución de {col_y}")
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("No hay columnas numéricas para graficar")
-    
-    with tab3:
-        st.subheader("Información del Dataset")
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         
         with col1:
-            st.metric("📌 Total de Registros", len(df))
-        with col2:
-            st.metric("📋 Columnas", len(df.columns))
-        with col3:
-            st.metric("💾 Tamaño (MB)", round(df.memory_usage(deep=True).sum() / 1024**2, 2))
+            # Gráfico: Distribución de Skin Factor
+            if 'skin' in df.columns:
+                fig1 = px.histogram(df, x='skin', nbins=20, 
+                                   title='Distribución de Daño de Formación (Skin)',
+                                   labels={'skin': 'Skin Factor', 'count': 'Cantidad de Pozos'})
+                st.plotly_chart(fig1, use_container_width=True)
         
+        with col2:
+            # Gráfico: Mejora EOR
+            if 'mejora_pct' in df.columns:
+                fig2 = px.histogram(df, x='mejora_pct', nbins=20,
+                                   title='Distribución de Mejora EOR (%)',
+                                   labels={'mejora_pct': 'Mejora (%)', 'count': 'Cantidad de Pozos'})
+                st.plotly_chart(fig2, use_container_width=True)
+    
+    with tab3:
+        st.subheader("Top 10 Candidatos - Mayor Ahorro Anual")
+        
+        if 'ahorro_anual' in df.columns and 'pozo' in df.columns:
+            top10 = df.nlargest(10, 'ahorro_anual')
+            fig3 = px.bar(top10, x='ahorro_anual', y='pozo', orientation='h',
+                         title='Top 10 Pozos - Ahorro OPEX Anual (USD)',
+                         labels={'ahorro_anual': 'Ahorro Anual (USD)', 'pozo': 'Pozo'})
+            fig3.update_layout(yaxis={'categoryorder': 'total ascending'})
+            st.plotly_chart(fig3, use_container_width=True)
+            
+            st.write("**Detalles:**")
+            st.dataframe(top10[['pozo', 'skin', 'mejora_pct', 'ahorro_anual', 'estado']], 
+                        use_container_width=True)
+    
+    with tab4:
+        st.subheader("Resumen Ejecutivo")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("📌 Total Pozos", len(df))
+        with col2:
+            st.metric("💰 Ahorro Promedio", f"${df['ahorro_anual'].mean():,.0f}")
+        with col3:
+            st.metric("📈 Mejora EOR Prom.", f"{df['mejora_pct'].mean():.1f}%")
+        with col4:
+            estado_critico = len(df[df['estado'] == 'CRÍTICO'])
+            st.metric("⚠️ Pozos Críticos", estado_critico)
+        
+        st.markdown("---")
         st.write("**Columnas del dataset:**")
         st.write(df.dtypes)
+        
+        st.write("**Estadísticas Descriptivas:**")
+        st.dataframe(df.describe(), use_container_width=True)
 else:
     st.error("❌ No se pudo cargar ningún dato")
