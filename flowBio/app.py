@@ -275,7 +275,31 @@ def fig_prod(bopd, extra, dias):
 
 
 def fig_dashboard(df):
-    """Dashboard 2×3 con datos reales o demo."""
+    """Dashboard 2×3 con datos reales o demo. Columnas opcionales manejadas con .get()."""
+
+    # ── Columnas con fallback seguro ────────────────────────────
+    has_perm   = "perm_md"       in df.columns
+    has_eff_b  = "eff_base_pct"  in df.columns
+    has_eff_n  = "eff_nacmc_pct" in df.columns
+    has_mej    = "mejora_pct"    in df.columns
+    has_fpi    = "fpi"           in df.columns
+    has_aho    = "ahorro_anual"  in df.columns
+    has_rec    = "recomendacion" in df.columns
+    has_temp   = "temp_c"        in df.columns
+    has_skin   = "skin"          in df.columns
+
+    # Columnas de fallback
+    x_perm   = df["perm_md"].clip(0,2000)   if has_perm  else np.ones(len(df))*250
+    y_eff_b  = df["eff_base_pct"]           if has_eff_b else np.ones(len(df))*55
+    y_eff_n  = df["eff_nacmc_pct"]          if has_eff_n else np.ones(len(df))*65
+    col_mej  = df["mejora_pct"]             if has_mej   else np.ones(len(df))*10
+    col_fpi  = df["fpi"]                    if has_fpi   else np.random.beta(1.5,5,len(df))
+    col_aho  = df["ahorro_anual"]           if has_aho   else np.ones(len(df))*50000
+    col_skin = df["skin"].clip(0,30)        if has_skin  else np.ones(len(df))*5
+    col_temp = df["temp_c"]                 if has_temp  else np.ones(len(df))*85
+    col_rec  = df["recomendacion"]          if has_rec   else np.full(len(df),"EVALUAR")
+    col_pozo = df["pozo"]                   if "pozo"    in df.columns else df.index.astype(str)
+
     fig = make_subplots(rows=2,cols=3,
         subplot_titles=["Factor Skin — Distribución","Eficiencia Barrido EOR",
                         "Top 15 Pozos — Mayor Potencial","Riesgo Taponamiento (FPI)",
@@ -283,41 +307,47 @@ def fig_dashboard(df):
         vertical_spacing=0.18, horizontal_spacing=0.1)
 
     # 1. Skin histogram
-    fig.add_trace(go.Histogram(x=df["skin"].clip(0,30), nbinsx=25,
+    fig.add_trace(go.Histogram(x=col_skin, nbinsx=25,
         marker_color=RD, opacity=0.85, name="Skin"), row=1,col=1)
-    fig.add_vline(x=df["skin"].mean(), line_dash="dash", line_color=AM,
-        annotation_text=f"Media: {df['skin'].mean():.1f}", row=1,col=1)
+    fig.add_vline(x=float(col_skin.mean()), line_dash="dash", line_color=AM,
+        annotation_text=f"Media: {col_skin.mean():.1f}", row=1,col=1)
 
     # 2. Scatter eficiencia
-    fig.add_trace(go.Scatter(x=df["perm_md"].clip(0,2000),y=df["eff_base_pct"],
+    fig.add_trace(go.Scatter(x=x_perm, y=y_eff_b,
         mode="markers",marker=dict(color=RD,size=4,opacity=0.5),name="Sin polímero"),row=1,col=2)
-    fig.add_trace(go.Scatter(x=df["perm_md"].clip(0,2000),y=df["eff_nacmc_pct"],
+    fig.add_trace(go.Scatter(x=x_perm, y=y_eff_n,
         mode="markers",marker=dict(color=GR,size=4,opacity=0.6),name="Na-CMC FlowBio"),row=1,col=2)
 
     # 3. Top 15
-    top = df.nlargest(15,"mejora_pct").sort_values("mejora_pct")
+    df2 = df.copy()
+    df2["_mej"]  = col_mej.values
+    df2["_rec"]  = col_rec.values
+    df2["_pozo"] = col_pozo.values
+    top = df2.nlargest(15,"_mej").sort_values("_mej")
     cols3=[GR if r=="INYECTAR Na-CMC" else AM if r=="EVALUAR" else BL
-           for r in top["recomendacion"]]
-    fig.add_trace(go.Bar(x=top["mejora_pct"],y=top["pozo"].str[:14],
+           for r in top["_rec"]]
+    fig.add_trace(go.Bar(x=top["_mej"],y=top["_pozo"].astype(str).str[:14],
         orientation="h",marker_color=cols3,opacity=0.85,name="Mejora%"),row=1,col=3)
 
     # 4. FPI
     lbs=["Bajo<br><0.25","Mod<br>0.25-0.5","Alto<br>0.5-0.75","Crítico<br>>0.75"]
-    cnts=[len(df[df.fpi<0.25]),len(df[(df.fpi>=0.25)&(df.fpi<0.5)]),
-          len(df[(df.fpi>=0.5)&(df.fpi<0.75)]),len(df[df.fpi>=0.75])]
+    fpi_s = pd.Series(col_fpi.values if hasattr(col_fpi,"values") else col_fpi)
+    cnts=[len(fpi_s[fpi_s<0.25]),len(fpi_s[(fpi_s>=0.25)&(fpi_s<0.5)]),
+          len(fpi_s[(fpi_s>=0.5)&(fpi_s<0.75)]),len(fpi_s[fpi_s>=0.75])]
     fig.add_trace(go.Bar(x=lbs,y=cnts,marker_color=[GR,AM,RD,"#CC0000"],
         opacity=0.85,name="FPI"),row=2,col=1)
 
     # 5. Ahorro
-    eco=df.nlargest(12,"ahorro_anual").sort_values("ahorro_anual")
-    fig.add_trace(go.Bar(x=eco["ahorro_anual"]/1000,y=eco["pozo"].str[:14],
+    df2["_aho"] = col_aho.values
+    eco = df2.nlargest(12,"_aho").sort_values("_aho")
+    fig.add_trace(go.Bar(x=eco["_aho"]/1000,y=eco["_pozo"].astype(str).str[:14],
         orientation="h",marker_color=BL,opacity=0.85,name="Ahorro K$"),row=2,col=2)
 
     # 6. Scatter temp vs perm
-    fig.add_trace(go.Scatter(x=df["temp_c"],y=df["perm_md"].clip(0,2000),
+    fig.add_trace(go.Scatter(x=col_temp, y=x_perm,
         mode="markers",
-        marker=dict(color=df["mejora_pct"],colorscale="Viridis",
-                    size=5,opacity=0.7,showscale=True,
+        marker=dict(color=col_mej.values if hasattr(col_mej,"values") else col_mej,
+                    colorscale="Viridis", size=5, opacity=0.7, showscale=True,
                     colorbar=dict(title="Mejora%",x=1.02,thickness=10)),
         name="Pozos"),row=2,col=3)
     fig.add_vline(x=90,line_dash="dot",line_color=AM,row=2,col=3)
@@ -685,11 +715,14 @@ with tab4:
 
     st.markdown("<br>", unsafe_allow_html=True)
     d1,d2,d3,d4 = st.columns(4)
+    skin_mean = df_s3["skin"].mean() if "skin" in df_s3.columns else 5.0
+    mej_mean  = df_s3["mejora_pct"].mean() if "mejora_pct" in df_s3.columns else 10.0
+    aho_mean  = df_s3["ahorro_anual"].mean() if "ahorro_anual" in df_s3.columns else 50000.0
     for col,(val,cls,lbl) in zip([d1,d2,d3,d4],[
         (f"{len(df_s3):,}","b","POZOS ANALIZADOS"),
-        (f"{df_s3['skin'].mean():.2f}","r" if df_s3['skin'].mean()>8 else "a","SKIN PROMEDIO"),
-        (f"{df_s3['mejora_pct'].mean():.1f}%","g","MEJORA EOR PROM."),
-        (f"${df_s3['ahorro_anual'].mean():,.0f}","g","AHORRO ANUAL PROM."),
+        (f"{skin_mean:.2f}","r" if skin_mean>8 else "a","SKIN PROMEDIO"),
+        (f"{mej_mean:.1f}%","g","MEJORA EOR PROM."),
+        (f"${aho_mean:,.0f}","g","AHORRO ANUAL PROM."),
     ]):
         with col:
             st.markdown(f"""
@@ -702,10 +735,11 @@ with tab4:
     st.plotly_chart(fig_dashboard(df_s3), use_container_width=True)
 
     st.markdown("<div class='sh'>🏆 TOP 10 — MAYOR POTENCIAL EOR</div>", unsafe_allow_html=True)
-    cols_show = [c for c in ["pozo","cuenca","temp_c","perm_md","skin",
-                              "mejora_pct","ahorro_anual","recomendacion","prioridad"]
-                 if c in df_s3.columns]
-    st.dataframe(df_s3.nlargest(10,"mejora_pct")[cols_show].reset_index(drop=True),
+    all_cols = ["pozo","cuenca","temp_c","perm_md","skin",
+                "mejora_pct","ahorro_anual","recomendacion","prioridad"]
+    cols_show = [c for c in all_cols if c in df_s3.columns]
+    sort_col  = "mejora_pct" if "mejora_pct" in df_s3.columns else df_s3.columns[0]
+    st.dataframe(df_s3.nlargest(10, sort_col)[cols_show].reset_index(drop=True),
                  use_container_width=True, hide_index=True)
 
 # ── TAB 5 — Data Lake ────────────────────────
