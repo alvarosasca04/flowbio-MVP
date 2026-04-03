@@ -147,3 +147,8 @@ if df is not None and not df.empty:
         st.dataframe(df.describe(), use_container_width=True)
 else:
     st.error("❌ No se pudo cargar ningún dato")
+
+        st.write("**Estadísticas Descriptivas:**")
+        st.dataframe(df.describe(), use_container_width=True)
+else:
+    st.error("❌ No se pudo cargar ningún dato")
