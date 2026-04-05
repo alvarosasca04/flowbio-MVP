@@ -364,6 +364,21 @@ def fig_mapa_satelital(df, filtro_nombre=None, zoom_lat=None, zoom_lon=None, zoo
             hovertext=hover,hoverinfo="text",
             name="Pozos UKCS",showlegend=False,
         ))
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+mapbox_token = os.getenv("MAPBOX_TOKEN")
+
+fig.update_layout(
+    mapbox=dict(
+        style="satellite-streets",
+        center=center,
+        zoom=zoom,
+        accesstoken=mapbox_token,  # ✅ Desde variable de entorno
+    ),
+    # ... resto del código
+)
 
     fig.update_layout(
         mapbox=dict(
