@@ -4,3 +4,4 @@ numpy
 plotly
 boto3
 pillow
+python-dotenv
