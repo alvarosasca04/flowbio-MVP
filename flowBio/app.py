@@ -366,39 +366,51 @@ def fig_mapa_satelital(df, filtro_nombre=None, zoom_lat=None, zoom_lon=None, zoo
         ))
 import os
 from dotenv import load_dotenv
+import plotly.graph_objects as go
 
+# ===== CARGAR VARIABLES DE ENTORNO =====
 load_dotenv()
 mapbox_token = os.getenv("MAPBOX_TOKEN")
 
+# ===== COLORES =====
+BG = "rgb(10,21,32)"
+BRD = "rgb(100,150,200)"
+TX = "rgb(255,255,255)"
+
+# ===== CONFIGURACIÓN DEL MAPA =====
+center = dict(lat=55.0, lon=-3.0)  # Cambia según tu región
+zoom = 5  # Cambia según necesites (3-8)
+
+# ===== CREAR FIGURA (asume que tienes datos) =====
+fig = go.Figure()
+
+# Aquí agrega tus datos/traces si tienes
+# fig.add_trace(go.Scattermapbox(...))
+
+# ===== ACTUALIZAR LAYOUT =====
 fig.update_layout(
     mapbox=dict(
         style="satellite-streets",
         center=center,
         zoom=zoom,
-        accesstoken=mapbox_token,  # ✅ Desde variable de entorno
+        accesstoken=mapbox_token,
     ),
-    # ... resto del código
+    paper_bgcolor=BG,
+    margin=dict(l=0, r=0, t=0, b=0),
+    height=460,
+    legend=dict(
+        bgcolor="rgba(10,21,32,.8)",
+        bordercolor=BRD,
+        borderwidth=1,
+        font=dict(color=TX, size=10),
+        x=0.01,
+        y=0.98,
+    ),
+    showlegend=True,
 )
 
-    fig.update_layout(
-        mapbox=dict(
-            style="satellite-streets",  # Mapa satelital igual al boceto Figma
-            center=center,
-            zoom=zoom,
-            accesstoken="pk.eyJ1IjoiYWx2YXJpdXMiLCJhIjoiY21ubHV3Mjk0MWY5MTJxcGtsMWR3ajloaSJ9.a0o-DS-Fl5MjEuhK1V84MQ",
-        ),
-        paper_bgcolor=BG,
-        margin=dict(l=0,r=0,t=0,b=0),
-        height=460,
-        legend=dict(
-            bgcolor="rgba(10,21,32,.8)",
-            bordercolor=BRD, borderwidth=1,
-            font=dict(color=TX,size=10),
-            x=0.01, y=0.98,
-        ),
-        showlegend=True,
-    )
-    return fig
+# ===== MOSTRAR MAPA =====
+fig.show()
 
 # ═══════════════════════════════════════════
 # OTRAS FIGURAS
