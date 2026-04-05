@@ -370,7 +370,7 @@ import plotly.graph_objects as go
 
 # ===== CARGAR VARIABLES DE ENTORNO =====
 load_dotenv()
-mapbox_token = os.getenv("MAPBOX_TOKEN")
+mapbox_token = os.getenv("pk.eyJ1IjoiYWx2YXJpdXMiLCJhIjoiY21ubHV3Mjk0MWY5MTJxcGtsMWR3ajloaSJ9.a0o-DS-Fl5MjEuhK1V84MQ")
 
 # ===== COLORES =====
 BG = "rgb(10,21,32)"
