@@ -331,7 +331,7 @@ def fig_mapa_satelital(df, filtro_nombre=None, zoom_lat=None, zoom_lon=None, zoo
     # Todos los pozos — puntos pequeños de fondo
     if filtro_nombre:
         # Modo búsqueda: fondo tenue
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattergeo(
             lat=lat_arr,lon=lon_arr,mode="markers",
             marker=dict(size=6,color=mcolors,opacity=0.3),
             hoverinfo="skip",name="Todos los pozos",showlegend=False,
@@ -341,7 +341,7 @@ def fig_mapa_satelital(df, filtro_nombre=None, zoom_lat=None, zoom_lon=None, zoo
         if any(mask):
             idx=[i for i,m in enumerate(mask) if m]
             for i in idx:
-                fig.add_trace(go.Scattermapbox(
+                fig.add_trace(go.Scattergeo(
                     lat=[lat_arr[i]],lon=[lon_arr[i]],mode="markers+text",
                     marker=dict(size=20,color=BL,opacity=1.0),
                     text=[names[i]],textfont=dict(size=11,color=TX),
@@ -350,7 +350,7 @@ def fig_mapa_satelital(df, filtro_nombre=None, zoom_lat=None, zoom_lon=None, zoo
                     name=names[i],showlegend=True,
                 ))
                 # Círculo pulsante alrededor
-                fig.add_trace(go.Scattermapbox(
+                fig.add_trace(go.Scattergeo(
                     lat=[lat_arr[i]],lon=[lon_arr[i]],mode="markers",
                     marker=dict(size=36,color=BL,opacity=0.2),
                     hoverinfo="skip",showlegend=False,
@@ -358,131 +358,166 @@ def fig_mapa_satelital(df, filtro_nombre=None, zoom_lat=None, zoom_lon=None, zoo
     else:
         # Modo exploración: todos con color y tamaño según skin
         sizes=np.clip(8+skins*0.6,8,18)
-        fig.add_trace(go.Scattermapbox(
-            lat=lat_arr,lon=lon_arr,mode="markers",
-            marker=dict(size=list(sizes),color=mcolors,opacity=0.85),
-            hovertext=hover,hoverinfo="text",
-            name="Pozos UKCS",showlegend=False,
-        ))
-import os
-from dotenv import load_dotenv
-import plotly.graph_objects as go
-import pandas as pd
-import numpy as np
-
-# ===== CARGAR VARIABLES DE ENTORNO =====
-load_dotenv()
-mapbox_token = os.getenv("MAPBOX_TOKEN")  # ✅ CORRECTO
-
-# ===== COLORES =====
-GR = "rgb(34,197,94)"   # Verde
-AM = "rgb(251,146,60)"  # Naranja
-RD = "rgb(239,68,68)"   # Rojo
-BL = "rgb(59,130,246)"  # Azul
-TX = "rgb(255,255,255)" # Texto
-
-# ═══════════════════════════════════════════
-# MAPA SATELITAL INTERACTIVO
-# ═══════════════════════════════════════════
-def fig_mapa_satelital(df, filtro_nombre=None, zoom_lat=None, zoom_lon=None, zoom_nivel=5, mapbox_token=None):
-    """
-    Mapa satelital estilo Mapbox.
-    """
-    col_lat  = detectar(df,["lat","latitude"])
-    col_lon  = detectar(df,["lon","long","longitude"])
-    col_name = detectar(df,["wellname","well_name","name","nombre","uwi","wellid"])
-    col_skin = detectar(df,["skin"])
-    col_op   = detectar(df,["operator","operador","company"])
-    col_mej  = detectar(df,["mejora","improvement","mejora_pct"])
-    col_aho  = detectar(df,["ahorro","saving","annual"])
-    col_rec  = detectar(df,["recomendacion","recommendation"])
-
-    if not col_lat or not col_lon:
-        lat_arr=np.random.uniform(53,62,len(df))
-        lon_arr=np.random.uniform(-3,4,len(df))
-    else:
-        lat_arr=pd.to_numeric(df[col_lat],errors="coerce").fillna(57.5).values
-        lon_arr=pd.to_numeric(df[col_lon],errors="coerce").fillna(1.5).values
-
-    names  = df[col_name].astype(str).values  if col_name else [f"P-{i}" for i in range(len(df))]
-    skins  = pd.to_numeric(df[col_skin],errors="coerce").fillna(5).values if col_skin else np.ones(len(df))*5
-    ops    = df[col_op].astype(str).values    if col_op   else ["—"]*len(df)
-    mejs   = pd.to_numeric(df[col_mej],errors="coerce").fillna(10).values if col_mej else np.ones(len(df))*10
-    ahos   = pd.to_numeric(df[col_aho],errors="coerce").fillna(0).values  if col_aho else np.zeros(len(df))
-    recs   = df[col_rec].astype(str).values   if col_rec  else ["EVALUAR"]*len(df)
-
-    # Color por skin
-    mcolors=[GR if s<3 else AM if s<8 else RD for s in skins]
-
-    # Centro y zoom del mapa
-    if zoom_lat and zoom_lon:
-        center=dict(lat=zoom_lat,lon=zoom_lon)
-        zoom=zoom_nivel
-    else:
-        center=dict(lat=57.5,lon=0.5)
-        zoom=4.8
-
-    hover=[
-        f"<b style='font-size:14px'>{n}</b><br>"
-        f"<span style='color:#aaa'>{o}</span><br><br>"
-        f"🎯 Skin Factor: <b>{s:.2f}</b><br>"
-        f"📈 Mejora EOR: <b>+{m:.1f}%</b><br>"
-        f"💰 Ahorro anual: <b>${a:,.0f} USD</b><br>"
-        f"🔬 {r}"
-        for n,o,s,m,a,r in zip(names,ops,skins,mejs,ahos,recs)
-    ]
-
-    fig=go.Figure()
-
-    # Todos los pozos — puntos pequeños de fondo
-    if filtro_nombre:
-        fig.add_trace(go.Scattermapbox(
-            lat=lat_arr,lon=lon_arr,mode="markers",
-            marker=dict(size=6,color=mcolors,opacity=0.3),
-            hoverinfo="skip",name="Todos los pozos",showlegend=False,
-        ))
-        mask=[filtro_nombre.lower() in n.lower() for n in names]
-        if any(mask):
-            idx=[i for i,m in enumerate(mask) if m]
-            for i in idx:
-                fig.add_trace(go.Scattermapbox(
-                    lat=[lat_arr[i]],lon=[lon_arr[i]],mode="markers+text",
-                    marker=dict(size=20,color=BL,opacity=1.0),
-                    text=[names[i]],textfont=dict(size=11,color=TX),
-                    textposition="top right",
-                    hovertext=hover[i],hoverinfo="text",
-                    name=names[i],showlegend=True,
-                ))
-                fig.add_trace(go.Scattermapbox(
-                    lat=[lat_arr[i]],lon=[lon_arr[i]],mode="markers",
-                    marker=dict(size=36,color=BL,opacity=0.2),
-                    hoverinfo="skip",showlegend=False,
-                ))
-    else:
-        sizes=np.clip(8+skins*0.6,8,18)
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattergeo(
             lat=lat_arr,lon=lon_arr,mode="markers",
             marker=dict(size=list(sizes),color=mcolors,opacity=0.85),
             hovertext=hover,hoverinfo="text",
             name="Pozos UKCS",showlegend=False,
         ))
 
-    # ===== CONFIGURAR LAYOUT =====
     fig.update_layout(
-        mapbox=dict(
-            style="satellite-streets",
-            center=center,
-            zoom=zoom,
-            accesstoken=mapbox_token,  # ✅ AGREGA EL TOKEN
+        geo=dict(
+            scope="europe",
+            resolution=50,
+            showland=True,
+            landcolor="#1C3020",       # Verde oscuro tierra
+            showocean=True,
+            oceancolor="#081420",      # Azul muy oscuro mar
+            showlakes=False,
+            showcountries=True,
+            countrycolor="#2A5040",
+            showcoastlines=True,
+            coastlinecolor="#3A8060",
+            showsubunits=True,
+            subunitcolor="#1E3A60",
+            projection_type="natural earth",
+            center=dict(
+                lat=zoom_lat if zoom_lat else 57.5,
+                lon=zoom_lon if zoom_lon else 0.5,
+            ),
+            lonaxis=dict(range=[-5, 8]),
+            lataxis=dict(range=[50, 63]),
+            bgcolor=BG,
+            lakecolor="#081420",
         ),
-        paper_bgcolor="rgb(10,21,32)",
-        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor=BG,
+        margin=dict(l=0, r=0, t=35, b=0),
         height=460,
+        title=dict(
+            text=(
+                f"<b>Mar del Norte — {len(df)} Pozos UKCS</b>"
+                f"&nbsp;&nbsp;<span style='font-size:11px;color:{GR}'>"
+                f"● Verde=Bajo &nbsp;● Ámbar=Moderado &nbsp;● Rojo=Alto/Crítico</span>"
+            ),
+            font=dict(size=13, color=TX), x=0.01,
+        ),
+        legend=dict(
+            bgcolor="rgba(8,20,32,.85)",
+            bordercolor=BRD, borderwidth=1,
+            font=dict(color=TX, size=10),
+            x=0.01, y=0.98,
+        ),
         showlegend=True,
     )
+    return fig
 
-    return fig  # ✅ RETORNA LA FIGURA
+# ═══════════════════════════════════════════
+# OTRAS FIGURAS
+# ═══════════════════════════════════════════
+def fig_gauge(skin):
+    c=GR if skin<3 else AM if skin<8 else RD
+    lbl="BAJO" if skin<3 else "MODERADO" if skin<8 else "SEVERO" if skin<20 else "CRÍTICO"
+    fig=go.Figure(go.Indicator(
+        mode="gauge+number",value=skin,
+        title={"text":f"FACTOR SKIN (S)<br><span style='font-size:12px;color:{c}'>{lbl}</span>",
+               "font":{"size":13,"color":TX}},
+        number={"font":{"size":40,"color":c,"family":"Space Mono"}},
+        gauge={"axis":{"range":[0,30],"tickfont":{"size":8,"color":"#6A8AAA"}},
+               "bar":{"color":c,"thickness":0.28},"bgcolor":BG2,
+               "steps":[{"range":[0,3],"color":"rgba(75,174,110,.1)"},
+                        {"range":[3,8],"color":"rgba(232,160,48,.1)"},
+                        {"range":[8,20],"color":"rgba(224,90,90,.1)"},
+                        {"range":[20,30],"color":"rgba(200,0,0,.15)"}]}))
+    fig.update_layout(paper_bgcolor=BG,font=dict(family="Space Mono",color=TX),
+                      margin=dict(l=20,r=20,t=60,b=20),height=260)
+    return fig
 
+def fig_rheo(en,eh):
+    g=np.logspace(-1,3,250)
+    vn=[en.visc(x) for x in g]; vh=[eh.visc(x) for x in g]
+    tn=[en.K*(x**en.n) for x in g]
+    fig=make_subplots(rows=1,cols=2,
+        subplot_titles=["η vs γ (Shear-Thinning Behavior)","τ = K·γⁿ (Power Law)"])
+    fig.add_trace(go.Scatter(x=g,y=vn,name=f"Na-CMC FlowBio (n={en.n:.3f})",
+        line=dict(color=GR,width=3)),row=1,col=1)
+    fig.add_trace(go.Scatter(x=g,y=vh,name=f"HPAM baseline (n={eh.n:.3f})",
+        line=dict(color=RD,width=2,dash="dash")),row=1,col=1)
+    fig.add_vrect(x0=10,x1=100,fillcolor="rgba(75,174,110,.07)",
+        line_color="rgba(75,174,110,.3)",row=1,col=1)
+    fig.add_trace(go.Scatter(x=g,y=tn,name="τ Na-CMC",
+        line=dict(color=BL,width=2.5)),row=1,col=2)
+    fig.update_layout(**LAY,height=320)
+    fig.update_xaxes(type="log",title_text="Tasa de Corte γ (s⁻¹)",gridcolor=BRD)
+    fig.update_yaxes(type="log",title_text="η (mPa·s)",gridcolor=BRD,row=1,col=1)
+    fig.update_yaxes(title_text="τ (Pa)",gridcolor=BRD,row=1,col=2)
+    for ann in fig.layout.annotations: ann.font.color=TX; ann.font.size=10
+    return fig
+
+def fig_prod(bopd,extra,dias):
+    t=np.arange(0,dias+1)
+    Qb=bopd*np.exp(-0.002*t); Qn=(bopd+extra)*np.exp(-0.0011*t)
+    fig=go.Figure()
+    fig.add_trace(go.Scatter(
+        x=np.concatenate([t,t[::-1]]),y=np.concatenate([Qn,Qb[::-1]]),
+        fill="toself",fillcolor="rgba(75,174,110,.1)",
+        line=dict(color="rgba(0,0,0,0)"),name="Barriles extra",hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=t,y=Qb,name="Baseline",
+        line=dict(color=RD,width=2,dash="dash")))
+    fig.add_trace(go.Scatter(x=t,y=Qn,name="Con Na-CMC FlowBio",
+        line=dict(color=GR,width=3)))
+    fig.update_layout(**LAY,height=300,
+        xaxis_title="Días",yaxis_title="Producción (bbl/día)",hovermode="x unified")
+    return fig
+
+def fig_skin_scatter(df):
+    col_sk=detectar(df,["skin"]); col_mj=detectar(df,["mejora","mejora_pct"])
+    col_n =detectar(df,["wellname","well_name","name"])
+    skins =pd.to_numeric(df[col_sk],errors="coerce").fillna(5).clip(0,30) if col_sk else pd.Series([5.0]*len(df))
+    mejs  =pd.to_numeric(df[col_mj],errors="coerce").fillna(0) if col_mj else pd.Series([10.0]*len(df))
+    names =df[col_n].astype(str) if col_n else pd.Series([f"P-{i}" for i in range(len(df))])
+    colors=[GR if s<3 else AM if s<8 else RD for s in skins]
+    fig=go.Figure()
+    fig.add_trace(go.Scatter(
+        x=skins,y=mejs,mode="markers",
+        marker=dict(color=colors,size=8,opacity=0.8,
+                    line=dict(color=BG2,width=0.8)),
+        hovertemplate="<b>%{text}</b><br>Skin: %{x:.2f}<br>Mejora EOR: %{y:.1f}%<extra></extra>",
+        text=names,name="Pozos"))
+    fig.add_vrect(x0=0,x1=3,fillcolor="rgba(75,174,110,.05)",line_width=0)
+    fig.add_vrect(x0=3,x1=8,fillcolor="rgba(232,160,48,.05)",line_width=0)
+    fig.add_vrect(x0=8,x1=30,fillcolor="rgba(224,90,90,.05)",line_width=0)
+    fig.update_layout(**LAY,height=300,
+        xaxis_title="Factor Skin (S)",yaxis_title="Mejora EOR con Na-CMC (%)",
+        title=dict(text="Skin Factor vs Potencial EOR — Todos los Pozos",
+                   font=dict(size=12,color=TX),x=0))
+    return fig
+
+def fig_top(df):
+    col_mj=detectar(df,["mejora","mejora_pct"])
+    col_ah=detectar(df,["ahorro","saving","annual"])
+    col_n =detectar(df,["wellname","well_name","name","nombre"])
+    col_rc=detectar(df,["recomendacion","recommendation"])
+    names =df[col_n].astype(str).str[:15] if col_n else pd.Series([f"P-{i}" for i in range(len(df))])
+    mejs  =pd.to_numeric(df[col_mj],errors="coerce").fillna(0) if col_mj else pd.Series([10.0]*len(df))
+    ahos  =pd.to_numeric(df[col_ah],errors="coerce").fillna(0) if col_ah else pd.Series([0.0]*len(df))
+    recs  =df[col_rc].astype(str) if col_rc else pd.Series(["EVALUAR"]*len(df))
+    df2=pd.DataFrame({"n":names.values,"mj":mejs.values,"ah":ahos.values,"r":recs.values})
+    top=df2.nlargest(12,"mj").sort_values("mj")
+    cols=[GR if r=="INYECTAR Na-CMC" else AM if r=="EVALUAR" else BL for r in top["r"]]
+    fig=make_subplots(rows=1,cols=2,subplot_titles=["Top 12 — Mejora EOR (%)","Top 12 — Ahorro OPEX (KUSD/año)"])
+    fig.add_trace(go.Bar(x=top["mj"],y=top["n"],orientation="h",
+        marker_color=cols,opacity=0.88,name="",
+        hovertemplate="%{y}: +%{x:.1f}%<extra></extra>"),row=1,col=1)
+    top2=df2.nlargest(12,"ah").sort_values("ah")
+    cols2=[GR if r=="INYECTAR Na-CMC" else AM if r=="EVALUAR" else BL for r in top2["r"]]
+    fig.add_trace(go.Bar(x=top2["ah"]/1000,y=top2["n"],orientation="h",
+        marker_color=cols2,opacity=0.88,name="",
+        hovertemplate="%{y}: $%{x:.0f}K USD/año<extra></extra>"),row=1,col=2)
+    fig.update_layout(**LAY,height=360,showlegend=False)
+    fig.update_xaxes(gridcolor=BRD,linecolor=BRD)
+    fig.update_yaxes(gridcolor=BRD,linecolor=BRD,tickfont=dict(size=9))
+    for ann in fig.layout.annotations: ann.font.color=TX; ann.font.size=10
+    return fig
 
 # ═══════════════════════════════════════════
 # SESSION STATE
@@ -715,9 +750,11 @@ if not st.session_state.simulated:
 
     # ── ANÁLISIS GENERAL ────────────────────────────────────────
     st.markdown(f"<div class='sh'>📈 ANÁLISIS PIML — TODOS LOS POZOS</div>",unsafe_allow_html=True)
-    ac1,ac2=st.columns(2)
-    with ac1: st.plotly_chart(fig_skin_scatter(df_wells),use_container_width=True)
-    with ac2: st.plotly_chart(fig_top(df_wells),use_container_width=True)
+    col_an1, col_an2 = st.columns(2)
+    with col_an1:
+        st.plotly_chart(fig_skin_scatter(df_wells), use_container_width=True)
+    with col_an2:
+        st.plotly_chart(fig_top(df_wells), use_container_width=True)
 
     # ── PERFILES DE USUARIOS ─────────────────────────────────────
     st.markdown(f"<div class='sh'>🎯 DISEÑADO PARA TUS CLIENTES OBJETIVO</div>",unsafe_allow_html=True)
