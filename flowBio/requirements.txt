@@ -5,5 +5,5 @@ plotly
 boto3
 pillow
 python-dotenv
-langchain-anthropic
+langchain-groq
 crewai
