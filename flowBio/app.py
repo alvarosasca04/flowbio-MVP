@@ -112,6 +112,35 @@ div[data-testid="metric-container"]{{background:{BG2};border:1px solid {BRD};bor
 .profile-name{{font-size:16px;font-weight:800;color:{TX};margin-bottom:8px}}
 .profile-pain{{font-size:11px;color:#6A8AAA;line-height:1.6;margin-bottom:10px}}
 .profile-win{{font-size:11px;color:{GR};line-height:1.6}}
+
+/* ══ AGENT STATUS CARDS ══ */
+.agent-card{{background:{BG2};border:1px solid {BRD};border-radius:12px;padding:16px;
+            position:relative;overflow:hidden}}
+.agent-card.running{{border-color:{AM};animation:borderPulse 1.5s infinite}}
+.agent-card.done{{border-color:{GR}}}
+.agent-card.idle{{border-color:{BRD}}}
+.agent-card.error{{border-color:{RD}}}
+@keyframes borderPulse{{0%,100%{{border-color:{AM}}}50%{{border-color:rgba(232,160,48,.3)}}}}
+.agent-badge{{font-size:9px;font-family:'Space Mono',monospace;letter-spacing:1.5px;
+              padding:3px 10px;border-radius:20px;font-weight:700;display:inline-block;margin-bottom:10px}}
+.agent-badge.running{{background:rgba(232,160,48,.15);color:{AM};border:1px solid {AM}}}
+.agent-badge.done{{background:rgba(75,174,110,.15);color:{GR};border:1px solid {GR}}}
+.agent-badge.idle{{background:rgba(30,58,96,.4);color:#6A8AAA;border:1px solid {BRD}}}
+.agent-badge.error{{background:rgba(224,90,90,.15);color:{RD};border:1px solid {RD}}}
+.agent-name{{font-size:14px;font-weight:700;margin-bottom:4px}}
+.agent-desc{{font-size:11px;color:#6A8AAA;line-height:1.5}}
+.agent-output{{font-size:10px;font-family:'Space Mono',monospace;color:{GR};
+               margin-top:10px;background:{BG3};border-radius:6px;padding:8px;
+               border:1px solid rgba(75,174,110,.2)}}
+.alert-crit{{background:rgba(224,90,90,.08);border:1px solid rgba(224,90,90,.3);
+             border-left:3px solid {RD};border-radius:8px;padding:12px 14px;margin-bottom:8px}}
+.alert-warn{{background:rgba(232,160,48,.08);border:1px solid rgba(232,160,48,.3);
+             border-left:3px solid {AM};border-radius:8px;padding:12px 14px;margin-bottom:8px}}
+.alert-ok{{background:rgba(75,174,110,.08);border:1px solid rgba(75,174,110,.3);
+           border-left:3px solid {GR};border-radius:8px;padding:12px 14px;margin-bottom:8px}}
+.alert-title2{{font-size:13px;font-weight:700;margin-bottom:3px}}
+.alert-meta{{font-size:10px;color:#6A8AAA;font-family:'Space Mono',monospace}}
+.alert-action{{font-size:11px;color:#A0C4D8;margin-top:6px;line-height:1.5}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -270,6 +299,76 @@ def listar_s3():
                  "fecha":o["LastModified"].strftime("%d/%m/%Y %H:%M")}
                 for o in r.get("Contents",[])]
     except: return []
+
+@st.cache_data(ttl=60)
+def cargar_reporte_agentes():
+    """
+    Carga el último reporte generado por el Agente 3 desde S3.
+    Este archivo es escrito por flowbio_agents_sagemaker.py (CrewAI).
+    Se refresca cada 60 segundos para mostrar el estado actualizado.
+    """
+    s3,ok=get_s3()
+    if not ok:
+        return _reporte_demo(),"Demo (S3 no configurado)",False
+    try:
+        obj=s3.get_object(Bucket=BUCKET,Key="agentes/ultimo_reporte.json")
+        rep=json.loads(obj["Body"].read())
+        ts=rep.get("metadata",{}).get("timestamp","—")
+        return rep,f"Agente 3 · {ts[:16]}",True
+    except:
+        return _reporte_demo(),"Demo (sin reporte de agentes)",False
+
+def _reporte_demo():
+    """Reporte demo cuando los agentes no han corrido todavía."""
+    return {
+        "metadata":{"timestamp":datetime.now().isoformat(),"total_pozos_analizados":15},
+        "resumen_ejecutivo":{
+            "skin_promedio":7.4,"pozos_criticos":2,"pozos_altos":5,
+            "pozos_moderados":6,"candidatos_inyeccion":8,
+            "mejora_promedio_pct":14.2,"ahorro_total_anual_usd":847000,
+            "ahorro_promedio_anual_usd":56467,
+        },
+        "alertas":[
+            {"nivel":"CRÍTICO","tipo":"Skin Damage Severo","pozo":"49/9-1",
+             "valor":"S = 18.42","accion":"Inyección Na-CMC prioritaria.",
+             "impacto_usd":124000},
+            {"nivel":"ADVERTENCIA","tipo":"Riesgo FPI","pozo":"211/18-1",
+             "valor":"FPI = 0.62","accion":"Evaluar condiciones de salinidad.",
+             "impacto_usd":0},
+            {"nivel":"CRÍTICO","tipo":"Skin Damage Severo","pozo":"9/13-1",
+             "valor":"S = 15.87","accion":"Diagnóstico urgente recomendado.",
+             "impacto_usd":98000},
+        ],
+        "top_oportunidades_eor":[
+            {"pozo":"29/10-1","mejora_pct":18.4,"ahorro_anual_usd":124000,"skin":6.2,
+             "recomendacion":"INYECTAR Na-CMC FlowBio — Condiciones óptimas"},
+            {"pozo":"21/25-1","mejora_pct":15.1,"ahorro_anual_usd":98000,"skin":5.8,
+             "recomendacion":"INYECTAR Na-CMC FlowBio — Condiciones óptimas"},
+            {"pozo":"20/5-1","mejora_pct":12.9,"ahorro_anual_usd":76000,"skin":4.1,
+             "recomendacion":"INYECTAR Na-CMC FlowBio — Condiciones óptimas"},
+        ],
+        "recomendacion_campo":"Campo con daño moderado-alto. 8 pozos listos para inyección de Na-CMC FlowBio. Ahorro proyectado $847K USD/año.",
+    }
+
+def trigger_agentes():
+    """
+    Escribe un archivo trigger en S3 para indicar al crew que debe correr.
+    En producción, esto puede disparar un Lambda o un SageMaker Pipeline.
+    """
+    s3,ok=get_s3()
+    if not ok: return False
+    try:
+        s3.put_object(
+            Bucket=BUCKET,
+            Key="agentes/trigger.json",
+            Body=json.dumps({
+                "trigger":True,
+                "timestamp":datetime.now().isoformat(),
+                "solicitado_por":"Streamlit Dashboard",
+            })
+        )
+        return True
+    except: return False
 
 # ═══════════════════════════════════════════
 # MAPA SATELITAL INTERACTIVO
@@ -817,12 +916,13 @@ for col,(v,c,l,s,t) in zip([k1,k2,k3,k4,k5],[
 
 st.markdown("<br>",unsafe_allow_html=True)
 
-tab1,tab2,tab3,tab4,tab5=st.tabs([
+tab1,tab2,tab3,tab4,tab5,tab6=st.tabs([
     "🗺️ Mapa de Pozos",
     "🎯 Diagnóstico Skin",
     "⚗ Reología PIML",
     "📈 Producción & ROI",
     "📊 Dashboard S3",
+    "🤖 Managed Agents",
 ])
 
 with tab1:
@@ -952,10 +1052,222 @@ with tab5:
             st.markdown(f"<div class='sh'>📦 ARCHIVOS EN S3</div>",unsafe_allow_html=True)
             st.dataframe(pd.DataFrame(files),use_container_width=True,hide_index=True)
 
+# ── TAB 6: MANAGED AGENTS ────────────────────────────
+with tab6:
+    st.markdown(f"<div class='sh'>🤖 MANAGED AGENTS — ESTADO EN TIEMPO REAL</div>",
+                unsafe_allow_html=True)
+
+    # Cargar reporte del Agente 3
+    with st.spinner("Cargando reporte de agentes desde S3..."):
+        rep_ag, fuente_ag, es_real_ag = cargar_reporte_agentes()
+
+    # Header de estado
+    col_ag_st, col_ag_btn = st.columns([3,1])
+    with col_ag_st:
+        if es_real_ag:
+            st.markdown(f"<div class='box-g'>✅ <b>Agentes activos</b> · Último reporte: {fuente_ag}</div>",
+                        unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div class='box-a'>🔵 <b>Modo Demo</b> · Ejecuta el notebook SageMaker para activar los agentes reales</div>",
+                        unsafe_allow_html=True)
+    with col_ag_btn:
+        if st.button("▶ Disparar Agentes", use_container_width=True, type="primary"):
+            if trigger_agentes():
+                st.success("✅ Trigger enviado al crew · Los agentes iniciarán en SageMaker")
+            else:
+                st.warning("⚠️ Configura los AWS Secrets para disparar los agentes")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Estado de los 3 agentes ─────────────────────────
+    st.markdown(f"<div class='sh'>⚡ ARQUITECTURA AGÉNTICA — FLUJO SECUENCIAL</div>",
+                unsafe_allow_html=True)
+
+    ag1,arrow1,ag2,arrow2,ag3 = st.columns([4,0.5,4,0.5,4])
+
+    meta = rep_ag.get("metadata",{})
+    res  = rep_ag.get("resumen_ejecutivo",{})
+    ts   = meta.get("timestamp","—")[:16] if meta.get("timestamp") else "—"
+    total= meta.get("total_pozos_analizados",0)
+
+    status = "done" if es_real_ag else "idle"
+
+    with ag1:
+        st.markdown(f"""
+        <div class='agent-card {status}'>
+          <div class='agent-badge {status}'>{'✓ COMPLETADO' if status=='done' else '⏸ EN ESPERA'}</div>
+          <div style='font-size:10px;color:{BL};font-family:Space Mono,monospace;
+                      letter-spacing:1px;margin-bottom:6px'>AGENTE 1</div>
+          <div class='agent-name'>Ingeniero de Datos</div>
+          <div class='agent-desc'>Carga y limpia CSVs desde S3. Normaliza columnas y elimina filas corruptas.</div>
+          <div class='agent-output'>
+            Tool: S3DataLoaderTool<br>
+            Input: UKCS CSV · S3<br>
+            Output: agent1_clean_*.csv<br>
+            Pozos: {total:,} registros
+          </div>
+        </div>""", unsafe_allow_html=True)
+    with arrow1:
+        st.markdown(f"<div style='text-align:center;font-size:24px;color:{BRD};padding-top:60px'>→</div>",
+                    unsafe_allow_html=True)
+    with ag2:
+        st.markdown(f"""
+        <div class='agent-card {status}'>
+          <div class='agent-badge {status}'>{'✓ COMPLETADO' if status=='done' else '⏸ EN ESPERA'}</div>
+          <div style='font-size:10px;color:{AM};font-family:Space Mono,monospace;
+                      letter-spacing:1px;margin-bottom:6px'>AGENTE 2</div>
+          <div class='agent-name'>Simulador PIML</div>
+          <div class='agent-desc'>Ejecuta el motor Power Law sobre cada pozo. Calcula Skin, FPI y ROI.</div>
+          <div class='agent-output'>
+            Tool: PIMLSimulatorTool<br>
+            Skin promedio: {res.get('skin_promedio',0):.2f}<br>
+            Candidatos inyección: {res.get('candidatos_inyeccion',0)}<br>
+            Mejora prom.: +{res.get('mejora_promedio_pct',0):.1f}%
+          </div>
+        </div>""", unsafe_allow_html=True)
+    with arrow2:
+        st.markdown(f"<div style='text-align:center;font-size:24px;color:{BRD};padding-top:60px'>→</div>",
+                    unsafe_allow_html=True)
+    with ag3:
+        st.markdown(f"""
+        <div class='agent-card {status}'>
+          <div class='agent-badge {status}'>{'✓ COMPLETADO' if status=='done' else '⏸ EN ESPERA'}</div>
+          <div style='font-size:10px;color:{GR};font-family:Space Mono,monospace;
+                      letter-spacing:1px;margin-bottom:6px'>AGENTE 3</div>
+          <div class='agent-name'>Monitor de Alertas</div>
+          <div class='agent-desc'>Genera alertas priorizadas y el reporte ejecutivo listo para el cliente.</div>
+          <div class='agent-output'>
+            Tool: AlertsReportTool<br>
+            Alertas: {len(rep_ag.get('alertas',[]))}<br>
+            Oportunidades EOR: {len(rep_ag.get('top_oportunidades_eor',[]))}<br>
+            Ahorro total: ${res.get('ahorro_total_anual_usd',0):,.0f}/año
+          </div>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── KPIs del reporte agéntico ────────────────────────
+    st.markdown(f"<div class='sh'>📊 RESUMEN EJECUTIVO — REPORTE AGENTE 3</div>",
+                unsafe_allow_html=True)
+
+    ra1,ra2,ra3,ra4,ra5 = st.columns(5)
+    for col,(v,c,l,t) in zip([ra1,ra2,ra3,ra4,ra5],[
+        (f"{total:,}","vb","POZOS ANALIZADOS","kcard-res"),
+        (f"{res.get('pozos_criticos',0)}","vr","CRÍTICOS (S>15)","kcard-res"),
+        (f"{res.get('candidatos_inyeccion',0)}","vg","CANDIDATOS EOR","kcard-eor"),
+        (f"+{res.get('mejora_promedio_pct',0):.1f}%","vg","MEJORA PROMEDIO","kcard-eor"),
+        (f"${res.get('ahorro_total_anual_usd',0)/1000:.0f}K","vg","AHORRO TOTAL/AÑO","kcard-eor"),
+    ]):
+        with col:
+            st.markdown(f"""<div class='kcard {t}'>
+              <div class='klbl'>{l}</div><div class='kval {c}'>{v}</div>
+            </div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Alertas del Agente 3 ─────────────────────────────
+    col_alerts, col_opps = st.columns([1,1])
+
+    with col_alerts:
+        st.markdown(f"<div class='sh'>🔔 ALERTAS GENERADAS POR EL AGENTE 3</div>",
+                    unsafe_allow_html=True)
+        alertas = rep_ag.get("alertas", [])
+        if alertas:
+            for a in alertas[:6]:
+                nivel = a.get("nivel","—")
+                cls_alert = "alert-crit" if nivel=="CRÍTICO" else "alert-warn" if nivel=="ADVERTENCIA" else "alert-ok"
+                emoji = "🔴" if nivel=="CRÍTICO" else "🟡" if nivel=="ADVERTENCIA" else "🟢"
+                impacto = f" · ${a.get('impacto_usd',0):,.0f} USD/año" if a.get('impacto_usd',0)>0 else ""
+                st.markdown(f"""
+                <div class='{cls_alert}'>
+                  <div class='alert-title2'>{emoji} {a.get('tipo','—')} — {a.get('pozo','—')}</div>
+                  <div class='alert-meta'>{a.get('valor','—')}{impacto}</div>
+                  <div class='alert-action'>{a.get('accion','—')}</div>
+                </div>""", unsafe_allow_html=True)
+        else:
+            st.info("Sin alertas todavía. Ejecuta los agentes en SageMaker.")
+
+    with col_opps:
+        st.markdown(f"<div class='sh'>🎯 TOP OPORTUNIDADES EOR — AGENTE 3</div>",
+                    unsafe_allow_html=True)
+        oportunidades = rep_ag.get("top_oportunidades_eor", [])
+        if oportunidades:
+            for i,op in enumerate(oportunidades[:5]):
+                st.markdown(f"""
+                <div class='alert-ok'>
+                  <div class='alert-title2'>
+                    #{i+1} — {op.get('pozo','—')}
+                    <span style='color:{GR};font-family:Space Mono;font-size:11px;
+                                 margin-left:8px'>+{op.get('mejora_pct',0):.1f}%</span>
+                  </div>
+                  <div class='alert-meta'>
+                    Skin S={op.get('skin',0):.2f} · Ahorro: ${op.get('ahorro_anual_usd',0):,.0f} USD/año
+                  </div>
+                  <div class='alert-action'>{op.get('recomendacion','—')}</div>
+                </div>""", unsafe_allow_html=True)
+        else:
+            st.info("Sin oportunidades detectadas todavía.")
+
+    # ── Mensajes por perfil de cliente ──────────────────
+    st.markdown(f"<div class='sh'>🎭 MENSAJES PERSONALIZADOS POR PERFIL · AGENTE 3</div>",
+                unsafe_allow_html=True)
+
+    pm1,pm2,pm3 = st.columns(3)
+    perfiles_msg=[
+        ("💼","EOR MANAGER","kcard-eor",BL,
+         f"Identificamos {res.get('candidatos_inyeccion',0)} pozos listos para inyección de Na-CMC. "
+         f"Producción incremental proyectada con mejora del +{res.get('mejora_promedio_pct',0):.1f}% "
+         f"en eficiencia de barrido. Success Fee: $5 USD por cada barril extra."),
+        ("🔬","RESERVOIR ENGINEER","kcard-res",PU,
+         f"Motor PIML v0.3 ejecutado sobre {total:,} pozos. "
+         f"Modelo Ostwald-de Waele (τ=K·γⁿ) con Factor Skin van Everdingen-Hurst. "
+         f"Skin promedio del campo: {res.get('skin_promedio',0):.2f}. "
+         f"{res.get('pozos_criticos',0)} pozos con daño crítico (S>15)."),
+        ("🌿","ESG MANAGER","kcard-esg",TEAL,
+         f"Na-CMC FlowBio: 100% biodegradable, DNSH compliant. "
+         f"Elimina HPAM tóxico en {res.get('candidatos_inyeccion',0)} pozos candidatos. "
+         f"Materia prima: lirio acuático invasor de Orizaba. "
+         f"Economía circular verificada por el Agente 3."),
+    ]
+    for col,(ico,rol,t,color,msg) in zip([pm1,pm2,pm3],perfiles_msg):
+        with col:
+            st.markdown(f"""
+            <div class='kcard {t}' style='text-align:left;padding:20px'>
+              <div style='font-size:24px;margin-bottom:8px'>{ico}</div>
+              <div style='font-size:10px;letter-spacing:1.5px;color:{color};
+                          font-family:Space Mono,monospace;margin-bottom:8px'>{rol}</div>
+              <div style='font-size:12px;color:#A0C4D8;line-height:1.6'>{msg}</div>
+            </div>""", unsafe_allow_html=True)
+
+    # ── Recomendación de campo ────────────────────────
+    rec_campo = rep_ag.get("recomendacion_campo","")
+    if rec_campo:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='box-g'>
+          <b style='color:{GR}'>📋 Recomendación de Campo · Agente 3</b><br><br>
+          {rec_campo}
+        </div>""", unsafe_allow_html=True)
+
+    # ── Instrucciones para activar agentes reales ──────
+    if not es_real_ag:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='box-a'>
+          <b>🚀 Para activar los agentes reales:</b><br><br>
+          1. Abre <code>flowbio_agents_sagemaker.py</code> en SageMaker JupyterLab<br>
+          2. Agrega tu <code>ANTHROPIC_API_KEY</code> en la Celda 2<br>
+          3. Ejecuta todas las celdas — los agentes correrán automáticamente<br>
+          4. El Agente 3 guardará el reporte en <code>s3://{BUCKET}/agentes/ultimo_reporte.json</code><br>
+          5. Esta pantalla se actualizará automáticamente (TTL: 60 segundos)<br><br>
+          <b>Modelo LLM:</b> Claude claude-3-5-sonnet-20241022 · <b>Framework:</b> CrewAI v0.28 · <b>Proceso:</b> Sequential
+        </div>""", unsafe_allow_html=True)
+
+
 st.markdown(f"""
 <hr style='border-color:{BRD};margin:30px 0 14px'>
 <div style='text-align:center;font-size:9px;color:#2A4A6A;line-height:1.8;font-family:Space Mono,monospace'>
-  <b style='color:{GR}'>FlowBio Intelligence</b> · Motor PIML v0.3 · TRL 3 ·
+  <b style='color:{GR}'>FlowBio Intelligence</b> · Motor PIML v0.3 · Managed Agents v1.0 · TRL 4 ·
   Na-CMC desde <i>Eichhornia crassipes</i> · Orizaba, Veracruz, MX<br>
   Startup Building Beyond the World Cup 2026 · Amplifika UAG
 </div>""",unsafe_allow_html=True)
