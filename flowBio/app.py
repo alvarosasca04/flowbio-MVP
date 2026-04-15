@@ -179,4 +179,51 @@ html_code = """
                 div.innerHTML = `<span class="text-white font-bold">${l.t}</span> ${l.m} <span class="text-emerald-400 font-bold">${l.s}</span>`;
                 term.appendChild(div);
                 term.scrollTop = term.scrollHeight;
-                await new Promise(r => setTimeout(r, 12
+                await new Promise(r => setTimeout(r, 1200));
+            }
+
+            setTimeout(() => {
+                document.getElementById('step-2').classList.add('hidden');
+                document.getElementById('step-3').classList.remove('hidden');
+                renderMoneyChart();
+                lucide.createIcons();
+            }, 1000);
+        }
+
+        function renderMoneyChart() {
+            const x = Array.from({length: 48}, (_, i) => i);
+            const baseline = x.map(v => 3000 * Math.exp(-0.05 * v));
+            const optimized = x.map((v, i) => i < 10 ? baseline[i] : baseline[i] + 1200 * Math.exp(-0.02 * (i-10)));
+
+            const data = [
+                {
+                    x: x, y: baseline, name: 'Status Quo',
+                    type: 'scatter', line: {color: '#f43f5e', width: 2, dash: 'dot'}
+                },
+                {
+                    x: x, y: optimized, name: 'FlowBio EOR',
+                    type: 'scatter', line: {color: '#10b981', width: 4},
+                    fill: 'tonexty', fillcolor: 'rgba(16, 185, 129, 0.1)'
+                }
+            ];
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: {l: 50, r: 20, t: 10, b: 40},
+                showlegend: false,
+                xaxis: { gridcolor: '#1e262f', tickfont: {color: '#4b5563', size: 10}, title: 'Meses' },
+                yaxis: { gridcolor: '#1e262f', tickfont: {color: '#4b5563', size: 10}, title: 'BBL/D' }
+            };
+
+            Plotly.newPlot('money-chart', data, layout, {responsive: true, displayModeBar: false});
+        }
+
+        window.onload = () => lucide.createIcons();
+    </script>
+</body>
+</html>
+"""
+
+# 4. LANZAMIENTO
+components.html(html_code, height=1200, scrolling=True)
