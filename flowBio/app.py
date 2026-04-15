@@ -1,15 +1,15 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 1. CONFIGURACIÓN DE PÁGINA (ESTRICTAMENTE PRIMERO)
+# 1. SETUP DE ALTA PRIORIDAD
 st.set_page_config(
-    page_title="FlowBio Intelligence | Command Center",
+    page_title="FlowBio | Agentic OS",
     page_icon="🧬",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# 2. LIMPIEZA DE INTERFAZ STREAMLIT
+# 2. INYECCIÓN DE INTERFAZ "ZERO-FRICTION"
 st.markdown("""
     <style>
         #MainMenu {visibility: hidden;}
@@ -21,179 +21,139 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. CÓDIGO HTML/CSS/JS (ESTÉTICA CANVA IA)
+# 3. NÚCLEO HIFI (HTML5 / TAILWIND / PLOTLY / LUCIDE)
 html_content = """
 <!doctype html>
-<html lang="es" class="h-full">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com/3.4.1"></script>
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <style>
-        html, body { height: 100%; margin: 0; padding: 0; background: #0d1117; overflow-x: hidden; scroll-behavior: smooth; }
-        * { font-family: 'Outfit', sans-serif; }
+        body { background: #05070a; color: #e6edf3; font-family: 'Outfit', sans-serif; margin: 0; overflow: hidden; }
         .mono { font-family: 'JetBrains Mono', monospace; }
-        .gradient-text { background: linear-gradient(90deg, #00E5FF, #39FF14); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .glow-border { box-shadow: 0 0 30px rgba(0,229,255,0.08); border: 1px solid rgba(48, 54, 61, 0.8); }
-        .terminal-window { background: #010409; border: 1px solid #30363d; border-radius: 12px; font-family: 'JetBrains Mono', monospace; }
-        .glass { background: rgba(22, 27, 34, 0.85); backdrop-filter: blur(12px); }
+        .gradient-bg { background: radial-gradient(circle at 50% -20%, #1a2a44 0%, #05070a 80%); }
+        .glass-card { background: rgba(13, 17, 23, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 20px; }
+        .neon-cyan { color: #00E5FF; text-shadow: 0 0 15px rgba(0, 229, 255, 0.4); }
+        .neon-green { color: #39FF14; text-shadow: 0 0 15px rgba(57, 255, 20, 0.4); }
+        .btn-primary { background: linear-gradient(135deg, #00E5FF, #0077FF); transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 119, 255, 0.3); }
+        .btn-primary:hover { transform: scale(1.02); box-shadow: 0 0 30px rgba(0, 229, 255, 0.5); letter-spacing: 1px; }
+        .terminal { background: #010409; border-radius: 12px; border: 1px solid #21262d; }
         .hidden { display: none !important; }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-        .fade-up { animation: fadeUp 0.6s ease-out forwards; }
-        
-        /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: #0d1117; }
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
     </style>
 </head>
-<body class="text-[#e6edf3]">
-    <div id="page-home" class="min-h-screen w-full flex flex-col justify-center items-center relative p-6">
-        <div class="absolute inset-0" style="background: radial-gradient(circle at center, #1a1f2e 0%, #0d1117 100%);"></div>
-        <div class="relative z-10 text-center fade-up">
-            <span class="mono text-[10px] tracking-[0.3em] text-[#00E5FF] uppercase border border-[#00E5FF]/30 px-4 py-1.5 rounded-full">Autonomous EOR Framework</span>
-            <h1 class="text-6xl md:text-8xl font-black gradient-text mt-8 mb-4">FlowBio</h1>
-            <p class="text-xl text-[#8b949e] max-w-2xl mx-auto mb-12 font-light italic">"Physics-Informed Machine Learning for Subsurface Excellence"</p>
-            <button onclick="showPage('dashboard')" class="px-10 py-4 rounded-xl font-bold text-white tracking-widest transition-all hover:scale-105" style="background: linear-gradient(135deg, #00E5FF, #0077FF); box-shadow: 0 0 40px rgba(0,229,255,0.4);">
-                ✨ ENTRAR AL DASHBOARD DE COMANDO
-            </button>
+<body class="gradient-bg min-h-screen">
+
+    <div id="page-home" class="h-screen w-full flex flex-col justify-center items-center p-6 text-center">
+        <div class="space-y-6">
+            <h1 class="text-7xl md:text-9xl font-extrabold tracking-tighter" style="background: linear-gradient(90deg, #fff, #8b949e); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">FLOWBIO</h1>
+            <p class="text-lg md:text-2xl text-[#8b949e] font-light max-w-2xl mx-auto">Sistemas Agénticos de Optimización EOR</p>
+            <button onclick="navigate('dashboard')" class="btn-primary mt-8 px-12 py-4 rounded-full font-bold text-white uppercase tracking-widest text-sm"> Iniciar Terminal de Comando </button>
         </div>
     </div>
 
-    <div id="page-dashboard" class="hidden min-h-screen w-full flex">
-        <aside class="w-64 border-r border-[#30363d] flex flex-col p-6 glass h-screen sticky top-0">
-            <h2 class="gradient-text text-2xl font-black mb-10">🧬 FlowBio</h2>
-            <nav class="space-y-6 flex-1">
-                <div class="space-y-2">
-                    <p class="text-[10px] text-[#6e7681] uppercase tracking-[0.2em] ml-2">Análisis</p>
-                    <div class="flex items-center gap-3 p-3 rounded-xl bg-[#161b22] text-[#00E5FF] border border-[#00E5FF]/20 shadow-lg">
-                        <i data-lucide="activity" class="w-4 h-4"></i> <span class="text-sm font-bold">Producción</span>
+    <div id="page-dashboard" class="hidden h-screen w-full flex flex-col p-6 space-y-6">
+        <header class="flex justify-between items-center bg-[#0d1117] border border-white/5 p-4 rounded-2xl">
+            <div class="flex items-center gap-4">
+                <span class="text-2xl font-black neon-cyan">🧬 FlowBio</span>
+                <div class="h-6 w-[1px] bg-white/10"></div>
+                <span class="mono text-[10px] text-[#6e7681]">NODE_ID: VER_ORIZABA_01</span>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#39FF14] animate-pulse"></span><span class="text-xs mono">S3_LAKE_SYNCED</span></div>
+                <button onclick="navigate('home')" class="text-xs text-[#6e7681] hover:text-white transition-all">TERMINAR SESIÓN</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="glass-card p-6 border-l-4 border-l-[#39FF14]">
+                <p class="text-[10px] uppercase tracking-widest text-[#6e7681] mb-2">Producción Incremental</p>
+                <h2 class="text-4xl font-extrabold neon-green">+22,500 <span class="text-sm font-light text-[#6e7681]">bbls</span></h2>
+            </div>
+            <div class="glass-card p-6">
+                <p class="text-[10px] uppercase tracking-widest text-[#6e7681] mb-2">EBITDA Proyectado (36m)</p>
+                <h2 class="text-4xl font-extrabold text-white">$1,462,500 <span class="text-sm font-light text-[#6e7681]">USD</span></h2>
+            </div>
+            <div class="glass-card p-6 border-l-4 border-l-[#00E5FF]">
+                <p class="text-[10px] uppercase tracking-widest text-[#00E5FF] mb-2">Success Fee Estimado</p>
+                <h2 class="text-4xl font-extrabold neon-cyan">$73,125 <span class="text-sm font-light text-[#6e7681]">USD</span></h2>
+            </div>
+        </div>
+
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0">
+            <div class="lg:col-span-8 glass-card p-6 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold flex items-center gap-2"><i data-lucide="line-chart" class="w-4 h-4 text-[#00E5FF]"></i> Pronóstico de Recuperación Activa</h3>
+                    <div class="flex gap-4 text-[10px] mono text-[#6e7681]">
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 bg-[#ff5f56] rounded-full"></span> BASELINE</span>
+                        <span class="flex items-center gap-1"><span class="w-2 h-2 bg-[#39FF14] rounded-full"></span> FLOWBIO EOR</span>
                     </div>
                 </div>
-                <div class="space-y-2">
-                    <p class="text-[10px] text-[#6e7681] uppercase tracking-[0.2em] ml-2">Entregables</p>
-                    <div class="flex items-center gap-3 p-3 rounded-xl text-[#8b949e] hover:bg-[#161b22] transition-all cursor-pointer">
-                        <i data-lucide="file-down" class="w-4 h-4"></i> <span class="text-sm">Reporte PDF</span>
-                    </div>
+                <div id="main-chart" class="flex-1 w-full"></div>
+            </div>
+
+            <div class="lg:col-span-4 terminal flex flex-col">
+                <div class="px-4 py-3 border-b border-white/5 flex justify-between items-center">
+                    <span class="mono text-[10px] text-[#6e7681]">AGENT_WORKFLOW_MONITOR</span>
+                    <div class="flex gap-1.5"><div class="w-2 h-2 rounded-full bg-[#30363d]"></div><div class="w-2 h-2 rounded-full bg-[#30363d]"></div></div>
                 </div>
-            </nav>
-            <button onclick="showPage('home')" class="flex items-center gap-2 text-xs text-[#6e7681] hover:text-white transition-all">
-                <i data-lucide="arrow-left" class="w-3 h-3"></i> Volver al Inicio
-            </button>
-        </aside>
-
-        <main class="flex-1 p-8 md:p-12 overflow-y-auto">
-            <div class="max-w-7xl mx-auto">
-                <header class="flex justify-between items-start mb-10">
-                    <div>
-                        <h1 class="text-4xl font-extrabold text-white">Centro de Comando</h1>
-                        <p class="text-[#6e7681] mono text-xs mt-2">Active Asset: s3://flowbio-lake/Field_North_Sea_v4.csv</p>
-                    </div>
-                    <div class="px-4 py-2 rounded-lg bg-[#161b22] border border-[#30363d]">
-                        <span class="w-2 h-2 rounded-full bg-[#39FF14] inline-block mr-2 animate-pulse"></span>
-                        <span class="text-xs mono text-[#39FF14]">AGENTS_ONLINE</span>
-                    </div>
-                </header>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                    <div class="glass p-8 rounded-2xl glow-border">
-                        <p class="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Producción Incremental</p>
-                        <h3 class="text-5xl font-black text-[#39FF14]">+22,500 <span class="text-sm font-light text-[#6e7681]">bbls</span></h3>
-                    </div>
-                    <div class="glass p-8 rounded-2xl glow-border">
-                        <p class="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Ebitda Adicional Proyectado</p>
-                        <h3 class="text-5xl font-black text-white">$1.5M <span class="text-sm font-light text-[#6e7681]">USD</span></h3>
-                    </div>
-                    <div class="glass p-8 rounded-2xl border-[#00E5FF]/40 bg-[#00E5FF]/5">
-                        <p class="text-[10px] text-[#00E5FF] uppercase tracking-widest mb-3">FlowBio Success Fee (5%)</p>
-                        <h3 class="text-5xl font-black text-[#00E5FF]">$67,500 <span class="text-sm font-light text-[#00E5FF]/60">USD</span></h3>
-                    </div>
+                <div id="terminal-body" class="p-4 flex-1 mono text-[11px] text-[#39FF14] space-y-2 overflow-y-auto leading-relaxed">
+                    <div>> CONNECTING TO AWS S3... [OK]</div>
+                    <div>> INITIALIZING PHYSICS AGENT...</div>
+                    <div class="text-white">> RESOLVING NAVIER-STOKES FOR NON-NEWTONIAN FLUIDS...</div>
+                    <div class="text-[#00E5FF]">> OPTIMIZING MOBILITY RATIO (M=1.0)... SUCCESS</div>
+                    <div class="text-white">> GENERATING FINANCIAL REPORT...</div>
+                    <div class="animate-pulse">_</div>
                 </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 glass p-8 rounded-2xl glow-border">
-                        <div class="flex justify-between items-center mb-6">
-                            <h4 class="font-bold flex items-center gap-2 text-[#e6edf3]">
-                                <i data-lucide="trending-up" class="w-5 h-5 text-[#00E5FF]"></i> Pronóstico de Recuperación
-                            </h4>
-                            <div class="flex gap-4 text-[10px] mono">
-                                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-[#ff5f56] rounded-full"></span> Status Quo</span>
-                                <span class="flex items-center gap-1"><span class="w-2 h-2 bg-[#39FF14] rounded-full"></span> FlowBio EOR</span>
-                            </div>
-                        </div>
-                        <div id="chart-main" class="w-full h-80"></div>
-                    </div>
-
-                    <div class="terminal-window flex flex-col h-full min-h-[400px]">
-                        <div class="flex items-center justify-between px-5 py-3 border-b border-[#30363d]">
-                            <div class="flex gap-1.5">
-                                <div class="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
-                                <div class="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
-                                <div class="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
-                            </div>
-                            <span class="text-[10px] text-[#6e7681] mono">agent_logs.sh</span>
-                        </div>
-                        <div class="p-6 mono text-[11px] text-[#39FF14] space-y-2 overflow-y-auto flex-1" id="console">
-                            <div class="opacity-50">Initializing agentik_core v4.0...</div>
-                            <div>> Accessing S3 Data Lake... [CONNECTED]</div>
-                            <div>> Data Agent: Cleaning production logs... [OK]</div>
-                            <div>> Physics Agent: Applying Darcy constraints... [OK]</div>
-                            <div>> Skin Factor Agent: Optimizing concentration... [OK]</div>
-                            <div class="text-white bg-[#39FF14]/20 inline-block px-1">SYSTEM READY: Dashboard updated.</div>
-                            <div class="animate-pulse">_</div>
-                        </div>
-                    </div>
+                <div class="p-4 border-t border-white/5">
+                    <button class="w-full py-2 rounded-lg bg-[#161b22] border border-white/10 text-[10px] font-bold tracking-widest hover:bg-[#1c212d] transition-all">DESCARGAR REPORTE TÉCNICO PDF</button>
                 </div>
             </div>
-        </main>
+        </div>
     </div>
 
     <script>
-        function showPage(page) {
-            if(page === 'dashboard') {
-                document.getElementById('page-home').classList.add('hidden');
-                document.getElementById('page-dashboard').classList.remove('hidden');
-                setTimeout(renderChart, 100);
-            } else {
-                document.getElementById('page-home').classList.remove('hidden');
-                document.getElementById('page-dashboard').classList.add('hidden');
+        function navigate(page) {
+            document.getElementById('page-home').classList.toggle('hidden', page !== 'home');
+            document.getElementById('page-dashboard').classList.toggle('hidden', page !== 'dashboard');
+            if(page === 'dashboard') { 
+                setTimeout(initDashboard, 100);
             }
+        }
+
+        function initDashboard() {
             lucide.createIcons();
+            renderChart();
         }
 
         function renderChart() {
             const months = Array.from({length: 36}, (_, i) => i + 1);
-            const baseline = months.map(m => 3500 * Math.exp(-0.055 * m));
-            const optimized = months.map((m, i) => m < 12 ? baseline[i] : baseline[i] + 1350 * Math.exp(-0.025 * (m - 12)));
+            const base = months.map(m => 3000 * Math.exp(-0.06 * m));
+            const flow = months.map((m, i) => m < 12 ? base[i] : base[i] + 1200 * Math.exp(-0.03 * (m - 12)));
 
-            const trace1 = {
-                x: months, y: baseline, name: 'Baseline',
-                type: 'scatter', line: {color: '#ff5f56', width: 2, dash: 'dot'},
-                hoverinfo: 'y'
-            };
-            const trace2 = {
-                x: months, y: optimized, name: 'FlowBio',
-                type: 'scatter', line: {color: '#39FF14', width: 4},
-                fill: 'tonexty', fillcolor: 'rgba(57, 255, 20, 0.08)',
-                hoverinfo: 'y'
-            };
+            const data = [
+                { x: months, y: base, name: 'Baseline', type: 'scatter', line: {color: '#ff5f56', width: 2, dash: 'dot'} },
+                { x: months, y: flow, name: 'FlowBio', type: 'scatter', line: {color: '#39FF14', width: 4}, fill: 'tonexty', fillcolor: 'rgba(57, 255, 20, 0.05)' }
+            ];
 
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
-                margin: {l: 50, r: 20, t: 10, b: 50},
+                margin: {l: 40, r: 10, t: 10, b: 40},
                 showlegend: false,
-                xaxis: { title: 'Meses', gridcolor: '#1f2937', zeroline: false, tickfont: {color: '#6e7681', size: 10}},
-                yaxis: { title: 'BBLS/Mes', gridcolor: '#1f2937', zeroline: false, tickfont: {color: '#6e7681', size: 10}}
+                xaxis: { gridcolor: '#1f2937', zeroline: false, tickfont: {color: '#6e7681', size: 10} },
+                yaxis: { gridcolor: '#1f2937', zeroline: false, tickfont: {color: '#6e7681', size: 10} }
             };
 
-            Plotly.newPlot('chart-main', [trace1, trace2], layout, {responsive: true, displayModeBar: false});
+            Plotly.newPlot('main-chart', data, layout, {responsive: true, displayModeBar: false});
         }
 
-        window.onload = () => lucide.createIcons();
+        window.onload = () => { lucide.createIcons(); };
     </script>
 </body>
 </html>
