@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import time
 import plotly.graph_objects as go
+import plotly.express as px
 from datetime import datetime
 
 # --- CONFIGURACIÓN DE ESCENA ---
@@ -18,7 +19,6 @@ st.markdown("""
     <style>
     .stApp { background: #0d1117; color: #e6edf3; }
     
-    /* Hero Section Página de Inicio */
     .hero-section {
         text-align: center;
         padding: 80px 20px;
@@ -35,7 +35,6 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
     }
 
-    /* Tarjetas Glassmorphism */
     .glass-card {
         background: rgba(22, 27, 34, 0.7);
         backdrop-filter: blur(10px);
@@ -45,14 +44,12 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    /* Botones Premium */
     div.stButton > button:first-child {
         background: linear-gradient(90deg, #00E5FF, #0077FF);
         border: none; color: white; font-weight: bold;
         border-radius: 10px; padding: 10px 25px; width: 100%;
     }
     
-    /* Terminal Console */
     .terminal-window {
         background-color: #010409;
         border: 1px solid #30363d;
@@ -90,11 +87,11 @@ if st.session_state.page == 'inicio':
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown('<div class="glass-card"><h3>🚀 Agentes Autónomos</h3><p>Workflow de agentes que limpian datos, validan física y calculan ROI sin intervención humana.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="glass-card"><h3>🚀 Agentes Autónomos</h3><p>Workflow que limpia datos, valida física y calcula ROI sin intervención humana.</p></div>', unsafe_allow_html=True)
     with c2:
-        st.markdown('<div class="glass-card"><h3>🧬 Motor PIML</h3><p>Modelado de fluidos no newtonianos integrado con leyes fundamentales de la termodinámica.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="glass-card"><h3>🧬 Motor PIML</h3><p>Modelado de fluidos no newtonianos integrado con leyes fundamentales termodinámicas.</p></div>', unsafe_allow_html=True)
     with c3:
-        st.markdown('<div class="glass-card"><h3>💰 Success Fee</h3><p>Modelo de negocio de bajo riesgo. Solo facturamos sobre la producción incremental real.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="glass-card"><h3>💰 Success Fee</h3><p>Modelo de bajo riesgo. Solo facturamos sobre la producción incremental real.</p></div>', unsafe_allow_html=True)
 
     st.write("<br>"*2, unsafe_allow_html=True)
     col_btn1, col_btn2, col_btn3 = st.columns([1,2,1])
@@ -104,7 +101,7 @@ if st.session_state.page == 'inicio':
             st.rerun()
 
 # ==========================================
-# 📊 DASHBOARD DE COMANDO (CON REPORTE PDF)
+# 📊 DASHBOARD DE COMANDO
 # ==========================================
 elif st.session_state.page == 'dashboard':
     with st.sidebar:
@@ -122,20 +119,20 @@ elif st.session_state.page == 'dashboard':
         st.divider()
         deploy = st.button("🚀 DESPLEGAR AGENTES")
         
-        # --- GENERACIÓN DE PDF (Simulación) ---
+        # --- GENERACIÓN DE REPORTE ---
         st.write("<br>"*5, unsafe_allow_html=True)
-        if st.button("📄 GENERAR REPORTE PDF"):
-            with st.spinner("Compilando reporte técnico..."):
+        if st.button("📄 GENERAR REPORTE TÉCNICO"):
+            with st.spinner("Compilando reporte PIML..."):
                 time.sleep(2)
-                st.success("Reporte Técnico PDF generado con éxito.")
+                st.success("Reporte generado exitosamente.")
                 st.download_button(
-                    label="⬇️ DESCARGAR REPORTE",
-                    data="Simulación de contenido PDF técnico para FlowBio Intelligence",
-                    file_name=f"Reporte_EOR_{asset}.pdf",
+                    label="⬇️ DESCARGAR PDF",
+                    data=f"REPORTE TÉCNICO FLOWBIO\nActivo: {asset}\nFecha: {datetime.now()}\nIncremental: Proyectado",
+                    file_name=f"FlowBio_Report_{asset}.pdf",
                     mime="application/pdf"
                 )
 
-    st.markdown("<h2>Centro de Comando <span style='color:#00E5FF;'>EOR</span></h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2>Command Center <span style='color:#00E5FF;'>{asset}</span></h2>", unsafe_allow_html=True)
 
     if not deploy:
         st.write("<br>"*5, unsafe_allow_html=True)
@@ -143,18 +140,18 @@ elif st.session_state.page == 'dashboard':
             <div style='text-align: center; opacity: 0.4;'>
                 <h1 style='font-size: 4rem;'>🖥️</h1>
                 <h3>CONSOLA EN STANDBY</h3>
-                <p>Presione 'Desplegar Agentes' en el panel lateral para iniciar el análisis PIML</p>
+                <p>Presione 'Desplegar Agentes' para iniciar el análisis geoespacial y físico</p>
             </div>
         """, unsafe_allow_html=True)
     else:
         # 1. TERMINAL
         terminal_placeholder = st.empty()
         log_lines = [
-            "> Iniciando handshake con AWS S3...",
-            f"> Extrayendo logs de {asset}...",
+            "> Handshake con AWS S3 finalizado...",
+            f"> Extrayendo logs geoespaciales de {asset}...",
             "> Data Agent: Estructurando series de tiempo... [OK]",
             "> Physics Agent: Resolviendo ecuación de transporte... [OK]",
-            "> Skin Agent: Calculando daño de formación... [OK]",
+            "> Skin Agent: Mapeando daño de formación... [OK]",
             "> Agentes sincronizados. Renderizando UI..."
         ]
         current_log = ""
@@ -173,14 +170,43 @@ elif st.session_state.page == 'dashboard':
         with c2: st.markdown(f'<div class="glass-card"><p style="color:#8b949e;">GANANCIA OPERATIVA</p><h2 style="color:#39FF14;">${revenue/1e6:.1f}M USD</h2></div>', unsafe_allow_html=True)
         with c3: st.markdown(f'<div class="glass-card" style="border-color:#00E5FF;"><p style="color:#00E5FF;">SUCCESS FEE</p><h2 style="color:#00E5FF;">${fee:,.0f} USD</h2></div>', unsafe_allow_html=True)
 
-        # 3. GRÁFICO PLOTLY
+        # 3. MAPA DE POZOS (NUEVO)
+        st.markdown("### 🗺️ Inteligencia Geoespacial: Mapa de Salud del Yacimiento")
+        
+        # Datos simulados basados en el activo seleccionado
+        lat_base = 57.15 if "UKCS" in asset else 18.85
+        lon_base = 2.15 if "UKCS" in asset else -97.10
+        
+        df_wells = pd.DataFrame({
+            'Pozo': [f'Pozo-{i}' for i in range(15)],
+            'lat': lat_base + np.random.uniform(-0.05, 0.05, 15),
+            'lon': lon_base + np.random.uniform(-0.05, 0.05, 15),
+            'Skin_Factor': np.random.uniform(2, 22, 15),
+            'Status': np.random.choice(['Óptimo', 'Moderado', 'Crítico'], 15)
+        })
+
+        fig_map = px.scatter_mapbox(
+            df_wells, lat="lat", lon="lon", color="Status", size="Skin_Factor",
+            hover_name="Pozo", zoom=11, height=450,
+            color_discrete_map={"Óptimo": "#39FF14", "Moderado": "#ffbd2e", "Crítico": "#ff5f56"}
+        )
+        fig_map.update_layout(
+            mapbox_style="carto-darkmatter",
+            margin={"r":0,"t":0,"l":0,"b":0},
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
+        st.plotly_chart(fig_map, use_container_width=True)
+
+        # 4. GRÁFICO DE PRODUCCIÓN
+        st.markdown("### 📈 Análisis Predictivo de Producción")
         meses = np.arange(1, 37)
         baseline = 3500 * np.exp(-0.06 * meses)
         optimized = np.copy(baseline)
         optimized[12:] = baseline[12:] + (incremental/15) * np.exp(-0.04 * (meses[12:] - 12))
 
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=meses, y=baseline, name='Status Quo', line=dict(color='#ff5f56', dash='dot')))
-        fig.add_trace(go.Scatter(x=meses, y=optimized, name='FlowBio EOR', line=dict(color='#39FF14', width=4), fill='tonexty', fillcolor='rgba(57, 255, 20, 0.1)'))
-        fig.update_layout(template="plotly_dark", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=20,b=0))
-        st.plotly_chart(fig, use_container_width=True)
+        fig_prod = go.Figure()
+        fig_prod.add_trace(go.Scatter(x=meses, y=baseline, name='Status Quo', line=dict(color='#ff5f56', dash='dot')))
+        fig_prod.add_trace(go.Scatter(x=meses, y=optimized, name='FlowBio EOR', line=dict(color='#39FF14', width=4), fill='tonexty', fillcolor='rgba(57, 255, 20, 0.1)'))
+        fig_prod.update_layout(template="plotly_dark", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=20,b=0))
+        st.plotly_chart(fig_prod, use_container_width=True)
