@@ -1,9 +1,8 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="FlowBio | Metrology & Analytics", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="FlowBio | Asset Command", layout="wide", initial_sidebar_state="collapsed")
 
-# Hack para ocultar Streamlit y dar espacio al diseño industrial
 st.markdown("""
     <style>
         [data-testid="stHeader"], footer {display: none !important;}
@@ -26,10 +25,11 @@ html_code = """
         body { background: var(--bg); color: #f3f4f6; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
         .mono { font-family: 'JetBrains Mono', monospace; }
         .glass { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
-        .btn-demo { background: transparent; border: 1px solid #38bdf8; color: #38bdf8; font-weight: 700; transition: 0.3s; }
-        .btn-demo:hover { background: rgba(56, 189, 248, 0.1); box-shadow: 0 0 15px rgba(56, 189, 248, 0.2); }
-        .terminal { background: #080a0d; border: 1px solid var(--border); font-family: 'JetBrains Mono'; }
+        .asset-select { background: #080a0d; border: 1px solid var(--border); color: #f3f4f6; cursor: pointer; }
+        .asset-select:hover { border-color: var(--primary); }
         .hidden { display: none !important; }
+        .btn-run { background: var(--primary); color: #000; font-weight: 800; text-transform: uppercase; transition: 0.3s; }
+        .btn-run:hover { filter: brightness(1.2); box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
     </style>
 </head>
 <body class="p-6 flex flex-col gap-6">
@@ -38,72 +38,83 @@ html_code = """
         <div class="flex items-center gap-6">
             <span class="text-2xl font-black text-white tracking-tighter uppercase">Flow<span class="text-emerald-500">Bio</span></span>
             <div class="h-6 w-[1px] bg-slate-800"></div>
-            <div class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                <span class="mono text-[9px] text-blue-400 font-bold uppercase">Metrology Mode: Active</span>
+            
+            <div class="flex items-center gap-3">
+                <label class="mono text-[10px] text-slate-500 uppercase">Seleccionar Activo:</label>
+                <select id="asset-picker" onchange="updateAssetInfo()" class="asset-select text-xs px-4 py-1.5 rounded-md mono outline-none">
+                    <option value="FB_VER_01">VER-ORIZABA-01</option>
+                    <option value="FB_UKCS_04">UKCS-NORTH-04</option>
+                    <option value="FB_TX_88">TEXAS-EAGLE-88</option>
+                </select>
             </div>
         </div>
-        <div class="flex gap-4">
-            <button onclick="runValidation()" id="run-btn" class="px-6 py-2 bg-emerald-500 text-black font-bold text-[10px] rounded uppercase tracking-tighter hover:brightness-110"> 
-                🔍 Iniciar Validación de Datos 
-            </button>
-        </div>
+        
+        <button onclick="runValidation()" id="run-btn" class="btn-run px-8 py-2 rounded text-[10px] tracking-tighter"> 
+            ⚡ Iniciar Simulación Agéntica 
+        </button>
     </header>
 
+    <div id="asset-metadata" class="grid grid-cols-4 gap-4">
+        <div class="glass p-4"><p class="text-[9px] text-slate-500 uppercase">Temperatura</p><p id="meta-temp" class="mono text-white text-sm">85°C</p></div>
+        <div class="glass p-4"><p class="text-[9px] text-slate-500 uppercase">Presión Reservoir</p><p id="meta-pres" class="mono text-white text-sm">3200 psi</p></div>
+        <div class="glass p-4"><p class="text-[9px] text-slate-500 uppercase">Permeabilidad</p><p id="meta-perm" class="mono text-white text-sm">450 mD</p></div>
+        <div class="glass p-4"><p class="text-[9px] text-slate-500 uppercase">Viscosidad Crudo</p><p id="meta-visc" class="mono text-white text-sm">120 cP</p></div>
+    </div>
+
     <div id="main-view" class="flex-1 flex flex-col gap-6 min-h-0">
-        
-        <div id="terminal-view" class="flex-1 glass terminal overflow-hidden flex flex-col">
+        <div id="terminal-view" class="flex-1 glass bg-[#080a0d] overflow-hidden flex flex-col">
             <div class="px-5 py-3 border-b border-slate-900 bg-black/40 flex justify-between items-center">
-                <span class="mono text-[10px] text-slate-500 uppercase tracking-widest">Metrological_Audit_Stream</span>
-                <div id="loader" class="hidden text-emerald-500 mono text-[9px] animate-pulse">CALCULANDO INCERTIDUMBRE...</div>
+                <span id="term-header" class="mono text-[10px] text-slate-500 uppercase tracking-widest">Awaiting Command...</span>
             </div>
             <div id="logs" class="p-6 flex-1 mono text-[12px] text-emerald-500/80 space-y-2 overflow-y-auto">
-                <div class="text-slate-600 italic">> Sistema listo para auditoría de sensores S3...</div>
+                <div class="text-slate-600 italic">> Seleccione un activo y presione 'Iniciar Simulación' para procesar con Agentes de IA...</div>
             </div>
         </div>
 
-        <div id="results-view" class="hidden space-y-6 h-full overflow-y-auto pb-6">
+        <div id="results-view" class="hidden flex flex-col gap-6 h-full overflow-y-auto pb-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="glass p-6">
-                    <p class="text-[9px] uppercase tracking-widest text-slate-500 mb-1">Incremental (Probabilístico)</p>
-                    <h2 class="mono text-4xl font-bold text-emerald-500">+22,500 <span class="text-xs text-slate-700">bbl</span></h2>
-                    <p class="text-[10px] text-emerald-700 mt-2 mono">Incertidumbre: ±2.4% (Confianza 95%)</p>
-                </div>
-                <div class="glass p-6">
-                    <p class="text-[9px] uppercase tracking-widest text-slate-500 mb-1">NPV Ajustado por Riesgo</p>
-                    <h2 class="mono text-4xl font-bold text-white">$1.41M <span class="text-xs text-slate-700">USD</span></h2>
-                    <p class="text-[10px] text-slate-600 mt-2 mono">Simulación Monte Carlo: 10k iteraciones</p>
-                </div>
-                <div class="glass p-6 border-blue-500/30">
-                    <p class="text-[9px] uppercase tracking-widest text-blue-400 mb-1">Calidad del Dato (QA/QC)</p>
-                    <h2 class="mono text-4xl font-bold text-white">98.2%</h2>
-                    <p class="text-[10px] text-blue-800 mt-2 mono">Error Cuadrático Medio: 0.012</p>
-                </div>
+                <div class="glass p-6"><p class="text-[9px] uppercase tracking-widest text-slate-500 mb-1">Incremental</p><h2 class="mono text-4xl font-bold text-emerald-500">+22.5k <span class="text-xs text-slate-700">bbl</span></h2></div>
+                <div class="glass p-6"><p class="text-[9px] uppercase tracking-widest text-slate-500 mb-1">NPV Ajustado</p><h2 class="mono text-4xl font-bold text-white">$1.41M <span class="text-xs text-slate-700">USD</span></h2></div>
+                <div class="glass p-6 border-emerald-500/30"><p class="text-[9px] uppercase tracking-widest text-emerald-500 mb-1">Success Fee</p><h2 class="mono text-4xl font-bold text-white">$73.1k <span class="text-xs text-slate-700">USD</span></h2></div>
             </div>
             <div class="glass p-8">
-                <div id="uncertainty-chart" class="w-full h-80"></div>
+                <div id="main-chart" class="w-full h-80"></div>
             </div>
+            <button onclick="resetDashboard()" class="text-[10px] mono text-slate-600 hover:text-white uppercase">← Cambiar Activo / Reiniciar</button>
         </div>
     </div>
 
     <script>
+        const assets = {
+            "FB_VER_01": { temp: "85°C", pres: "3200 psi", perm: "450 mD", visc: "120 cP" },
+            "FB_UKCS_04": { temp: "110°C", pres: "4500 psi", perm: "150 mD", visc: "45 cP" },
+            "FB_TX_88": { temp: "95°C", pres: "2800 psi", perm: "800 mD", visc: "210 cP" }
+        };
+
+        function updateAssetInfo() {
+            const val = document.getElementById('asset-picker').value;
+            document.getElementById('meta-temp').textContent = assets[val].temp;
+            document.getElementById('meta-pres').textContent = assets[val].pres;
+            document.getElementById('meta-perm').textContent = assets[val].perm;
+            document.getElementById('meta-visc').textContent = assets[val].visc;
+        }
+
         async function runValidation() {
             const logs = document.getElementById('logs');
-            const loader = document.getElementById('loader');
             const btn = document.getElementById('run-btn');
+            const assetName = document.getElementById('asset-picker').selectedOptions[0].text;
             
-            btn.disabled = true; btn.style.opacity = "0.5";
-            loader.classList.remove('hidden');
+            btn.disabled = true; btn.style.opacity = "0.3";
+            document.getElementById('term-header').textContent = `RUNNING AGENTS ON ${assetName}...`;
             logs.innerHTML = "";
 
             const steps = [
-                "> Conectando a nodos de medición en tiempo real...",
-                "> Validando calibración de caudalímetros (ISO 17025)... [OK]",
-                "> Agente Metrología: Calculando Desviación Estándar...",
-                "> Ejecutando prueba de normalidad de Shapiro-Wilk... [PASSED]",
-                "> Analizando propagación de errores en sensores S3...",
-                "> Aplicando Factor de Cobertura k=2...",
-                "> VALIDACIÓN EXITOSA: Datos dentro del umbral de confianza."
+                `> Conectando a Data Lake para activo: ${assetName}`,
+                "> Agente Física: Validando Ley de Darcy y Reología...",
+                "> Agente Metrología: Calculando Incertidumbre P90/P50/P10...",
+                "> Ejecutando 10,000 iteraciones Monte Carlo... [OK]",
+                "> Generando curvas de recobro incremental...",
+                "> SIMULACIÓN EXITOSA."
             ];
 
             for (const s of steps) {
@@ -112,37 +123,40 @@ html_code = """
                 if(s.includes('OK') || s.includes('EXITOSA')) d.className = "text-white font-bold";
                 logs.appendChild(d);
                 logs.scrollTop = logs.scrollHeight;
-                await new Promise(r => setTimeout(r, 700));
+                await new Promise(r => setTimeout(r, 800));
             }
 
-            loader.classList.add('hidden');
             document.getElementById('terminal-view').classList.add('hidden');
+            document.getElementById('asset-metadata').classList.add('hidden');
             document.getElementById('results-view').classList.remove('hidden');
             setTimeout(renderPlot, 100);
+        }
+
+        function resetDashboard() {
+            document.getElementById('results-view').classList.add('hidden');
+            document.getElementById('terminal-view').classList.remove('hidden');
+            document.getElementById('asset-metadata').classList.remove('hidden');
+            document.getElementById('run-btn').disabled = false;
+            document.getElementById('run-btn').style.opacity = "1";
+            document.getElementById('term-header').textContent = "Awaiting Command...";
+            document.getElementById('logs').innerHTML = '<div class="text-slate-600 italic">> Seleccione un activo y presione Iniciar Simulación...</div>';
         }
 
         function renderPlot() {
             const x = Array.from({length: 36}, (_, i) => i + 1);
             const b = x.map(m => 3000 * Math.exp(-0.06 * m));
             const f = x.map((m, i) => m < 12 ? b[i] : b[i] + 1300 * Math.exp(-0.028 * (m - 12)));
-            
-            // Líneas de incertidumbre (Sombreado P90-P10)
-            const upper = f.map(v => v * 1.05);
-            const lower = f.map(v => v * 0.95);
-
             const data = [
-                { x: x, y: b, type: 'scatter', line: {color: '#f43f5e', width: 1.5, dash: 'dot'}, name: 'Base' },
-                { x: x, y: f, type: 'scatter', line: {color: '#10b981', width: 3}, name: 'P50 Forecast' },
-                { x: [...x, ...x.reverse()], y: [...upper, ...lower.reverse()], fill: 'toself', fillcolor: 'rgba(16, 185, 129, 0.1)', line: {color: 'transparent'}, name: 'Incertidumbre' }
+                { x: x, y: b, type: 'scatter', line: {color: '#f43f5e', width: 2, dash: 'dot'} },
+                { x: x, y: f, type: 'scatter', line: {color: '#10b981', width: 4}, fill: 'tonexty', fillcolor: 'rgba(16, 185, 129, 0.05)' }
             ];
-
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
                 margin: {l: 50, r: 20, t: 10, b: 50}, showlegend: false,
                 xaxis: { gridcolor: '#1e262f', tickfont: {color: '#4b5563', size: 9} },
                 yaxis: { gridcolor: '#1e262f', tickfont: {color: '#4b5563', size: 9} }
             };
-            Plotly.newPlot('uncertainty-chart', data, layout, {responsive: true, displayModeBar: false});
+            Plotly.newPlot('main-chart', data, layout, {responsive: true, displayModeBar: false});
         }
     </script>
 </body>
