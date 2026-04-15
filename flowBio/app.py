@@ -1,186 +1,94 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-import time
-import plotly.graph_objects as go
-from datetime import datetime
+import streamlit.components.v1 as components
 
-# --- CONFIGURACIÓN DE ESCENA ---
+# 1. Configuración de la página de Streamlit
 st.set_page_config(
-    page_title="FlowBio | Agentic EOR Platform",
+    page_title="FlowBio Intelligence",
     page_icon="🧬",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed",
 )
 
-# --- SISTEMA DE ESTILOS "ENTERPRISE DARK" ---
+# 2. Definición del código HTML/CSS/JS (Tu código original)
+# Nota: He envuelto tu código en una variable de Python.
+html_code = """
+<!doctype html>
+<html lang="es" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlowBio Intelligence</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;family=Outfit:wght@300;400;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+  html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: #0d1117; }
+  * { font-family: 'Outfit', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .gradient-text { background: linear-gradient(90deg, #00E5FF, #39FF14); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .glow-border { box-shadow: 0 0 30px rgba(0,229,255,0.08); }
+  .terminal-line { animation: typeLine 0.4s ease-out forwards; opacity: 0; }
+  @keyframes typeLine { to { opacity: 1; } }
+  @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 20px rgba(0,229,255,0.15); } 50% { box-shadow: 0 0 40px rgba(0,229,255,0.3); } }
+  .pulse-glow { animation: pulseGlow 3s ease-in-out infinite; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  .fade-up { animation: fadeUp 0.6s ease-out forwards; opacity:0; }
+  .fade-up-d1 { animation-delay: 0.1s; }
+  .fade-up-d2 { animation-delay: 0.2s; }
+  .fade-up-d3 { animation-delay: 0.3s; }
+  .fade-up-d4 { animation-delay: 0.5s; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0d1117; }
+  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+  .chart-bar { transition: height 0.8s ease-out; }
+  
+  /* Ajuste para Streamlit iframe */
+  #app { height: 100vh; width: 100vw; }
+</style>
+ </head>
+ <body class="bg-[#0d1117] text-[#e6edf3]">
+  <div id="app">
+    <div id="page-home" class="h-full w-full flex flex-col">
+        <div class="flex-1 flex flex-col items-center justify-center px-6 py-16 relative overflow-hidden">
+            <div class="absolute inset-0" style="background: radial-gradient(ellipse at center, #1a1f2e 0%, #0d1117 70%);"></div>
+            <div class="relative z-10 text-center max-w-4xl mx-auto">
+                <div class="fade-up mb-2">
+                    <span class="mono text-xs tracking-widest text-[#00E5FF] uppercase border border-[#00E5FF]/30 px-3 py-1 rounded-full">Plataforma Agéntica EOR</span>
+                </div>
+                <h1 class="fade-up fade-up-d1 text-5xl md:text-7xl font-extrabold gradient-text mt-6 mb-4 leading-tight">FlowBio Intelligence</h1>
+                <p class="fade-up fade-up-d2 text-lg md:text-xl text-[#8b949e] mb-10">La primera plataforma de Agentes de IA para Optimización EOR</p>
+                <button onclick="showPage('dashboard')" class="fade-up fade-up-d4 pulse-glow px-8 py-3.5 rounded-xl font-bold text-white text-sm tracking-wide" style="background: linear-gradient(135deg, #00E5FF, #0077FF);"> ✨ ENTRAR AL DASHBOARD DE COMANDO </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-dashboard" class="h-full w-full hidden">
+        </div>
+  </div>
+
+  <script>
+    // PEGAR AQUÍ TODO EL CONTENIDO DE TU <script> ORIGINAL
+    // (Funciones showPage, showTab, renderChart, renderWells, runPipeline, etc.)
+    function showPage(page) {
+        document.getElementById('page-home').classList.toggle('hidden', page !== 'home');
+        document.getElementById('page-dashboard').classList.toggle('hidden', page !== 'dashboard');
+        if (page === 'dashboard') { showTab('overview'); lucide.createIcons(); }
+    }
+    // ... resto del script
+    lucide.createIcons();
+  </script>
+ </body>
+</html>
+"""
+
+# 3. Inyección en Streamlit
+# Usamos un contenedor que ocupe todo el ancho y alto disponible
 st.markdown("""
     <style>
-    .stApp { background: #0d1117; color: #e6edf3; }
-    
-    /* Hero Section Página de Inicio */
-    .hero-section {
-        text-align: center;
-        padding: 80px 20px;
-        background: radial-gradient(circle at center, #1a1f2e 0%, #0d1117 100%);
-        border-radius: 20px;
-        margin-bottom: 40px;
-        border: 1px solid #30363d;
-    }
-    .hero-title {
-        font-size: 4rem;
-        font-weight: 800;
-        background: linear-gradient(90deg, #00E5FF, #39FF14);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    /* Tarjetas Glassmorphism */
-    .glass-card {
-        background: rgba(22, 27, 34, 0.7);
-        backdrop-filter: blur(10px);
-        border: 1px solid #30363d;
-        border-radius: 16px;
-        padding: 25px;
-        margin-bottom: 20px;
-    }
-    
-    /* Botones Premium */
-    div.stButton > button:first-child {
-        background: linear-gradient(90deg, #00E5FF, #0077FF);
-        border: none; color: white; font-weight: bold;
-        border-radius: 10px; padding: 10px 25px; width: 100%;
-    }
-    
-    /* Terminal Console */
-    .terminal-window {
-        background-color: #010409;
-        border: 1px solid #30363d;
-        border-radius: 12px;
-        padding: 20px;
-        font-family: 'Courier New', monospace;
-        color: #39FF14;
-        height: 250px;
-        overflow-y: auto;
-    }
+        .stApp { margin: 0; padding: 0; }
+        iframe { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+        [data-testid="stHeader"] { display: none; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- LÓGICA DE NAVEGACIÓN ---
-if 'page' not in st.session_state:
-    st.session_state.page = 'inicio'
-
-def change_page(page_name):
-    st.session_state.page = page_name
-
-# ==========================================
-# 🏠 PÁGINA DE INICIO (HOME)
-# ==========================================
-if st.session_state.page == 'inicio':
-    st.markdown(f"""
-        <div class="hero-section">
-            <h1 class="hero-title">FlowBio Intelligence</h1>
-            <p style="font-size: 1.5rem; color: #8b949e;">La primera plataforma de Agentes de IA para Optimización EOR</p>
-            <p style="max-width: 800px; margin: 20px auto; color: #8b949e;">
-                Reduzca el factor de daño, optimice la movilidad de fluidos y maximice su recuperación incremental 
-                mediante flujos de trabajo autónomos PIML.
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown('<div class="glass-card"><h3>🚀 Agentes Autónomos</h3><p>Workflow de agentes que limpian datos, validan física y calculan ROI sin intervención humana.</p></div>', unsafe_allow_html=True)
-    with c2:
-        st.markdown('<div class="glass-card"><h3>🧬 Motor PIML</h3><p>Modelado de fluidos no newtonianos integrado con leyes fundamentales de la termodinámica.</p></div>', unsafe_allow_html=True)
-    with c3:
-        st.markdown('<div class="glass-card"><h3>💰 Success Fee</h3><p>Modelo de negocio de bajo riesgo. Solo facturamos sobre la producción incremental real.</p></div>', unsafe_allow_html=True)
-
-    st.write("<br>"*2, unsafe_allow_html=True)
-    col_btn1, col_btn2, col_btn3 = st.columns([1,2,1])
-    with col_btn2:
-        if st.button("✨ ENTRAR AL DASHBOARD DE COMANDO", key="btn_entrar"):
-            change_page('dashboard')
-            st.rerun()
-
-# ==========================================
-# 📊 DASHBOARD DE COMANDO (CON REPORTE PDF)
-# ==========================================
-elif st.session_state.page == 'dashboard':
-    with st.sidebar:
-        st.markdown("<h1 style='color: #00E5FF;'>🧬 FlowBio</h1>", unsafe_allow_html=True)
-        if st.button("🏠 Regresar al Inicio"):
-            change_page('inicio')
-            st.rerun()
-        st.divider()
-        st.markdown("### ☁️ S3 Data Lake Source")
-        asset = st.selectbox("Activo S3", ["UKCS_North_Sea_Asset_01", "Veracruz_South_Project"])
-        st.divider()
-        st.markdown("### ⚙️ Parámetros del Pozo")
-        p_visc = st.slider("Viscosidad (cP)", 1.0, 200.0, 85.0)
-        p_perm = st.slider("Permeabilidad (mD)", 10, 800, 350)
-        st.divider()
-        deploy = st.button("🚀 DESPLEGAR AGENTES")
-        
-        # --- GENERACIÓN DE PDF (Simulación) ---
-        st.write("<br>"*5, unsafe_allow_html=True)
-        if st.button("📄 GENERAR REPORTE PDF"):
-            with st.spinner("Compilando reporte técnico..."):
-                time.sleep(2)
-                st.success("Reporte Técnico PDF generado con éxito.")
-                st.download_button(
-                    label="⬇️ DESCARGAR REPORTE",
-                    data="Simulación de contenido PDF técnico para FlowBio Intelligence",
-                    file_name=f"Reporte_EOR_{asset}.pdf",
-                    mime="application/pdf"
-                )
-
-    st.markdown("<h2>Centro de Comando <span style='color:#00E5FF;'>EOR</span></h2>", unsafe_allow_html=True)
-
-    if not deploy:
-        st.write("<br>"*5, unsafe_allow_html=True)
-        st.markdown("""
-            <div style='text-align: center; opacity: 0.4;'>
-                <h1 style='font-size: 4rem;'>🖥️</h1>
-                <h3>CONSOLA EN STANDBY</h3>
-                <p>Presione 'Desplegar Agentes' en el panel lateral para iniciar el análisis PIML</p>
-            </div>
-        """, unsafe_allow_html=True)
-    else:
-        # 1. TERMINAL
-        terminal_placeholder = st.empty()
-        log_lines = [
-            "> Iniciando handshake con AWS S3...",
-            f"> Extrayendo logs de {asset}...",
-            "> Data Agent: Estructurando series de tiempo... [OK]",
-            "> Physics Agent: Resolviendo ecuación de transporte... [OK]",
-            "> Skin Agent: Calculando daño de formación... [OK]",
-            "> Agentes sincronizados. Renderizando UI..."
-        ]
-        current_log = ""
-        for line in log_lines:
-            current_log += f"<div>> {line}</div>"
-            terminal_placeholder.markdown(f'<div class="terminal-window">{current_log}</div>', unsafe_allow_html=True)
-            time.sleep(0.3)
-
-        # 2. MÉTRICAS DINÁMICAS
-        incremental = int(22500 * (p_perm/350) * (p_visc/85))
-        revenue = incremental * 65
-        fee = revenue * 0.05
-
-        c1, c2, c3 = st.columns(3)
-        with c1: st.markdown(f'<div class="glass-card"><p style="color:#8b949e;">CRUDO INCREMENTAL</p><h2 style="color:#39FF14;">+{incremental:,} bbls</h2></div>', unsafe_allow_html=True)
-        with c2: st.markdown(f'<div class="glass-card"><p style="color:#8b949e;">GANANCIA OPERATIVA</p><h2 style="color:#39FF14;">${revenue/1e6:.1f}M USD</h2></div>', unsafe_allow_html=True)
-        with c3: st.markdown(f'<div class="glass-card" style="border-color:#00E5FF;"><p style="color:#00E5FF;">SUCCESS FEE</p><h2 style="color:#00E5FF;">${fee:,.0f} USD</h2></div>', unsafe_allow_html=True)
-
-        # 3. GRÁFICO PLOTLY
-        meses = np.arange(1, 37)
-        baseline = 3500 * np.exp(-0.06 * meses)
-        optimized = np.copy(baseline)
-        optimized[12:] = baseline[12:] + (incremental/15) * np.exp(-0.04 * (meses[12:] - 12))
-
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=meses, y=baseline, name='Status Quo', line=dict(color='#ff5f56', dash='dot')))
-        fig.add_trace(go.Scatter(x=meses, y=optimized, name='FlowBio EOR', line=dict(color='#39FF14', width=4), fill='tonexty', fillcolor='rgba(57, 255, 20, 0.1)'))
-        fig.update_layout(template="plotly_dark", plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', margin=dict(l=0,r=0,t=20,b=0))
-        st.plotly_chart(fig, use_container_width=True)
+components.html(html_code, height=2000, scrolling=False)
