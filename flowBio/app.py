@@ -248,13 +248,6 @@ input[type=range] {
 }
 input[type=range].fin-slider { accent-color: var(--cyan); }
 
-.piml-box {
-  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
-  padding: 16px 18px; display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px;
-}
-.piml-eq { font-family: var(--mono); font-size: 13px; color: var(--cyan); }
-.piml-eq span { color: var(--muted); font-size:11px; }
-
 .btn-sim {
   width: 100%; background: var(--green); color: #050C12;
   font-family: var(--head); font-weight: 700; font-size: 13px; letter-spacing: 2px;
@@ -287,7 +280,6 @@ input[type=range].fin-slider { accent-color: var(--cyan); }
 @keyframes termShow { to { opacity:1; } }
 .term-line.dim { color: var(--muted); }
 .term-line.ok  { color: var(--green); }
-.term-line.warn { color: var(--amber); }
 .term-progress {
   margin-top: 20px; background: var(--bg3); border: 1px solid var(--border);
   border-radius: 6px; height: 6px; overflow: hidden;
@@ -319,8 +311,6 @@ input[type=range].fin-slider { accent-color: var(--cyan); }
   border-radius: 8px; padding: 9px 18px; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 6px;
 }
 .btn-action:hover { border-color: var(--green); color: var(--green); }
-.btn-action.primary { background: var(--green); color: #050C12; border-color: var(--green); font-weight:700; }
-.btn-action.primary:hover { filter: brightness(1.1); }
 
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .kpi-card {
@@ -341,16 +331,12 @@ input[type=range].fin-slider { accent-color: var(--cyan); }
 .kpi-card.c .kpi-val { color: var(--cyan); }
 .kpi-card.a .kpi-val { color: var(--amber); }
 .kpi-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 8px; }
-.kpi-delta { position: absolute; top: 18px; right: 18px; font-family: var(--mono); font-size: 10px; color: var(--green); background: rgba(0,229,160,.1); border: 1px solid rgba(0,229,160,.2); border-radius: 4px; padding: 3px 8px; }
 
 .content-grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; min-height: 420px; }
 
 .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; }
 .chart-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .chart-card-title { font-family: var(--mono); font-size: 11px; letter-spacing: 1.8px; color: var(--soft); text-transform: uppercase; }
-.chart-legend { display: flex; gap: 16px; }
-.legend-item { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10px; color: var(--muted); }
-.legend-dot { width: 8px; height: 3px; border-radius: 2px; }
 
 .side-panel { display: flex; flex-direction: column; gap: 16px; }
 
@@ -361,18 +347,7 @@ input[type=range].fin-slider { accent-color: var(--cyan); }
 .or-key { color: var(--soft); }
 .or-val { font-family: var(--mono); font-weight: 500; }
 .or-val.ok   { color: var(--green); }
-.or-val.warn { color: var(--amber); }
 .or-val.bad  { color: var(--red); }
-
-.alert-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
-.alert-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--border); }
-.alert-row:last-child { border-bottom: none; }
-.alert-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
-.alert-dot.ok   { background: var(--green); }
-.alert-dot.warn { background: var(--amber); }
-.alert-dot.bad  { background: var(--red); }
-.alert-text { font-size: 12px; color: var(--soft); line-height: 1.5; }
-.alert-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 3px; }
 
 .bottom-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 
@@ -387,18 +362,12 @@ input[type=range].fin-slider { accent-color: var(--cyan); }
 .rheo-val   { font-family:var(--mono); font-size:10px; color:var(--text); width:48px; text-align:right; }
 
 .roi-center { text-align:center; padding: 12px 0; }
-.roi-big { font-family:var(--mono); font-size:40px; color:var(--green); letter-spacing:-2px; }
+.roi-big { font-family:var(--mono); font-size:40px; color:var(--cyan); letter-spacing:-2px; }
 .roi-sub { font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:1px; margin-top:4px; }
 .roi-rows { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
 .roi-row  { display:flex; justify-content:space-between; font-size:12px; }
 .roi-row-k { color:var(--muted); }
 .roi-row-v { font-family:var(--mono); }
-
-/* Tooltip badge */
-.tooltip-wrap { position: relative; display: inline-flex; align-items: center; gap: 6px; }
-.tooltip-icon { width: 14px; height: 14px; border-radius: 50%; background: var(--bg3); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--muted); cursor: default; }
-.tooltip-box { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 8px 12px; font-family: var(--mono); font-size: 10px; color: var(--soft); white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 50; }
-.tooltip-wrap:hover .tooltip-box { opacity: 1; }
 </style>
 </head>
 <body>
@@ -449,7 +418,7 @@ input[type=range].fin-slider { accent-color: var(--cyan); }
           <div class="card-title" style="color:var(--cyan)">SENSIBILIDAD FINANCIERA</div>
           
           <div class="slider-row">
-            <span class="slider-lbl fin">PRECIO DEL BARRIL (USD)</span>
+            <span class="slider-lbl fin">PRECIO BARRIL (USD)</span>
             <span class="slider-val fin" id="price-disp">$75</span>
           </div>
           <input type="range" class="fin-slider" id="price-in" min="40" max="120" value="75" oninput="upd()">
@@ -762,4 +731,31 @@ function renderProdChart() {
     {x,y:y1, name:'Baseline', type:'scatter', line:{color:'#EF4444',dash:'dot',width:2}},
     {x,y:y2, name:'FlowBio', type:'scatter', line:{color:'#00E5A0',width:3}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.08)'},
   ],{
-    paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,
+    paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)', margin:{l:50,r:10,t:10,b:40}, showlegend:false,
+    font:{family:'DM Mono',color:'#4A6580',size:10}, xaxis:{gridcolor:'#152335'}, yaxis:{gridcolor:'#152335'}
+  },{responsive:true,displayModeBar:false});
+}
+
+function renderRheoChart() {
+  const gamma = Array.from({length:60},(_,i)=>Math.pow(10,-1+i*4/59));
+  Plotly.newPlot('chart-rheo',[
+    {x:gamma,y:gamma.map(g => SIM.K * Math.pow(g, SIM.n-1)), type:'scatter', line:{color:'#00E5A0',width:2.5}}
+  ],{
+    paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)', margin:{l:45,r:5,t:5,b:35}, showlegend:false,
+    font:{family:'DM Mono',color:'#4A6580',size:9}, xaxis:{type:'log',gridcolor:'#152335'}, yaxis:{type:'log',gridcolor:'#152335'}
+  },{responsive:true,displayModeBar:false});
+}
+
+function fmt(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return Math.round(n).toString();
+}
+
+upd();
+</script>
+</body>
+</html>
+"""
+
+components.html(HTML, height=1300, scrolling=False)
