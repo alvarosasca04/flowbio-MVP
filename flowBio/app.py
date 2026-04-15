@@ -5,7 +5,7 @@ import time
 import plotly.graph_objects as go
 
 # ==========================================
-# 1. CONFIGURACIÓN DE PÁGINA Y CSS (DeepTech UX)
+# 1. CONFIGURACIÓN DE PÁGINA
 # ==========================================
 st.set_page_config(
     page_title="FlowBio EOR Agentic OS",
@@ -14,179 +14,249 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inyección de CSS para Dark Mode premium, tipografía y acentos
+# ==========================================
+# 2. INYECCIÓN DE CSS AVANZADO (Diseño HTML/SaaS)
+# ==========================================
 st.markdown("""
     <style>
-    /* Fondo principal y acentos */
-    .stApp {
-        background-color: #0B0E14;
-    }
+    /* Fondo oscuro profundo */
+    .stApp { background-color: #0d1117; color: #c9d1d9; }
     
-    /* Personalización de métricas */
-    div[data-testid="stMetricValue"] {
-        color: #39FF14 !important; /* Verde Neón para números clave */
-        font-size: 2.5rem !important;
-        font-weight: 800 !important;
+    /* Ocultar elementos predeterminados de Streamlit para más limpieza */
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+
+    /* Tarjetas de Métricas (Estilo Dashboard Web) */
+    .metric-card {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        transition: transform 0.2s ease, border-color 0.2s ease;
     }
-    div[data-testid="stMetricDelta"] {
-        color: #00E5FF !important; /* Cyan para los deltas */
+    .metric-card:hover {
+        transform: translateY(-5px);
+        border-color: #58a6ff;
+        box-shadow: 0 8px 15px rgba(88, 166, 255, 0.1);
     }
-    
-    /* Botón principal */
+    .metric-title {
+        color: #8b949e;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 10px;
+    }
+    .metric-value {
+        color: #39FF14; /* Verde Neón */
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin: 0;
+    }
+    .metric-value.cyan { color: #00E5FF; /* Cyan para la tarifa */ }
+    .metric-delta {
+        color: #58a6ff;
+        font-size: 0.85rem;
+        margin-top: 5px;
+    }
+
+    /* Terminal de Agentes */
+    .terminal-container {
+        background-color: #010409;
+        border: 1px solid #30363d;
+        border-radius: 10px;
+        padding: 15px;
+        font-family: 'Courier New', Courier, monospace;
+        color: #39FF14;
+        margin-bottom: 20px;
+    }
+    .terminal-header {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #30363d;
+    }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red { background-color: #ff5f56; }
+    .dot-yellow { background-color: #ffbd2e; }
+    .dot-green { background-color: #27c93f; }
+
+    /* Botón Principal */
     div.stButton > button:first-child {
-        background: linear-gradient(90deg, #00E5FF 0%, #0088FF 100%);
+        background: linear-gradient(135deg, #00E5FF 0%, #0077FF 100%);
         color: white;
         font-weight: bold;
         border: none;
         border-radius: 8px;
-        height: 3rem;
-        transition: all 0.3s ease;
+        height: 3.5rem;
+        width: 100%;
+        font-size: 1.1rem;
+        transition: all 0.3s;
     }
     div.stButton > button:first-child:hover {
-        background: linear-gradient(90deg, #39FF14 0%, #00E5FF 100%);
-        box-shadow: 0px 0px 15px rgba(57, 255, 20, 0.5);
-        transform: translateY(-2px);
-    }
-    
-    /* Títulos y separadores */
-    h1, h2, h3 {
-        color: #F8F9FA !important;
-        font-family: 'Inter', sans-serif;
-    }
-    hr {
-        border-color: #1F2937;
+        box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+        transform: scale(1.02);
     }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. PANEL DE CONTROL LATERAL (Sidebar)
+# 3. PANEL DE CONTROL LATERAL (Sidebar)
 # ==========================================
 with st.sidebar:
-    st.markdown("<h2 style='text-align: center; color: #00E5FF;'>FlowBio Intelligence</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='text-align: center; color: #6B7280; margin-top: -15px;'>EOR Agentic OS</h4>", unsafe_allow_html=True)
-    st.divider()
+    st.markdown("""
+        <div style='text-align: center; margin-bottom: 20px;'>
+            <h1 style='color: #00E5FF; margin-bottom: 0; font-size: 2rem;'>FlowBio</h1>
+            <p style='color: #8b949e; letter-spacing: 2px; margin-top: -10px;'>AGENTIC OS</p>
+        </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("### 🗄️ Ingesta de Datos")
-    uploaded_file = st.file_uploader("Cargar historial de producción (CSV)", type=['csv'])
+    uploaded_file = st.file_uploader("Historial de producción (CSV)", type=['csv'])
     
-    st.markdown("### ⚙️ Parámetros de Yacimiento")
-    perm = st.slider("Permeabilidad (mD)", min_value=1, max_value=1000, value=250, step=10)
-    visc = st.slider("Viscosidad del crudo (cP)", min_value=1.0, max_value=150.0, value=45.5, step=0.5)
-    sw = st.slider("Saturación de Agua (Sw)", min_value=0.1, max_value=0.9, value=0.6, step=0.05)
+    st.markdown("### ⚙️ Parámetros Físicos")
+    perm = st.slider("Permeabilidad (mD)", 1, 1000, 250, 10)
+    visc = st.slider("Viscosidad (cP)", 1.0, 150.0, 45.5, 0.5)
+    sw = st.slider("Saturación de Agua (Sw)", 0.1, 0.9, 0.6, 0.05)
     
-    st.divider()
-    deploy_clicked = st.button("🚀 DESPLEGAR AGENTES EOR")
+    st.markdown("<br>", unsafe_allow_html=True)
+    deploy_clicked = st.button("🚀 DESPLEGAR AGENTES")
 
 # ==========================================
-# 3. INTERFAZ PRINCIPAL (Main Area)
+# 4. INTERFAZ PRINCIPAL (Main Area)
 # ==========================================
-st.title("Centro de Comando EOR")
-st.markdown("Plataforma de orquestación de agentes de IA para Recuperación Secundaria Optimizada.")
+st.markdown("<h2 style='color: white; font-weight: 300;'>Centro de Comando <span style='color: #00E5FF; font-weight: 700;'>EOR</span></h2>", unsafe_allow_html=True)
+st.markdown("<p style='color: #8b949e;'>Orquestación de Agentes PIML para Recuperación Secundaria Avanzada.</p>", unsafe_allow_html=True)
 st.divider()
 
 if not deploy_clicked:
-    st.info("👈 Configure los parámetros del yacimiento y despliegue los agentes para iniciar la simulación PIML (Physics-Informed Machine Learning).")
+    st.info("💡 Esperando configuración. Ajuste los parámetros en el panel izquierdo y despliegue los agentes.")
 else:
-    # --- SIMULACIÓN DE AGENTES (Terminal Visual) ---
-    with st.status("Iniciando Enjambre de Agentes FlowBio...", expanded=True) as status:
-        time.sleep(1)
-        st.write("⏳ **Data Agent:** Limpiando y estructurando historial del CSV... `[OK]`")
-        time.sleep(1.2)
-        st.write("⏳ **Physics Agent:** Aplicando Ley de Darcy y restricciones termodinámicas para M=1... `[OK]`")
-        time.sleep(1.5)
-        st.write("⏳ **Skin Factor Agent:** Optimizando concentración para evitar taponamiento físico... `[OK]`")
-        time.sleep(1.2)
-        st.write("⏳ **Financial Agent:** Proyectando Línea Base (DCA) y calculando ROI... `[OK]`")
-        time.sleep(0.5)
-        status.update(label="Flujo de Trabajo Agentic Completado", state="complete", expanded=False)
-
-    st.success("✅ Modelado finalizado. Mostrando proyecciones financieras y operativas.")
+    # --- TERMINAL VISUAL (Simulación HTML) ---
+    terminal_placeholder = st.empty()
     
-    # --- RESULTADOS FINANCIEROS (Métricas) ---
-    st.markdown("### 💰 Impacto Financiero y Operativo Proyectado (36 Meses)")
+    def render_terminal(lines):
+        html = f"""
+        <div class="terminal-container">
+            <div class="terminal-header">
+                <div class="dot dot-red"></div>
+                <div class="dot dot-yellow"></div>
+                <div class="dot dot-green"></div>
+                <span style="color: #8b949e; font-size: 0.8rem; margin-left: 10px;">flowbio-agents@cluster ~ %</span>
+            </div>
+            {"<br>".join(lines)}
+        </div>
+        """
+        terminal_placeholder.markdown(html, unsafe_allow_html=True)
+
+    # Simulación de agentes en tiempo real
+    lines = ["> Iniciando Enjambre de Agentes FlowBio..."]
+    render_terminal(lines)
+    time.sleep(1)
+    
+    lines.append("> [Agente Datos] Limpiando y estructurando dataset... <span style='color: #58a6ff;'>[OK]</span>")
+    render_terminal(lines)
+    time.sleep(1.2)
+    
+    lines.append("> [Agente Física] Aplicando Ley de Darcy y PIML (M=1)... <span style='color: #58a6ff;'>[OK]</span>")
+    render_terminal(lines)
+    time.sleep(1.5)
+    
+    lines.append("> [Agente Químico] Optimizando concentración (Skin Factor)... <span style='color: #58a6ff;'>[OK]</span>")
+    render_terminal(lines)
+    time.sleep(1.2)
+    
+    lines.append("> [Agente Finanzas] Proyectando DCA y calculando ROI... <span style='color: #58a6ff;'>[OK]</span>")
+    lines.append("> <b>Ejecución Completada.</b> Modelos exportados a consola UI.")
+    render_terminal(lines)
+    time.sleep(0.5)
+    
+    # --- RESULTADOS FINANCIEROS (Tarjetas HTML Personalizadas) ---
+    st.markdown("### 📊 Proyección Financiera a 36 Meses")
+    
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric(label="Crudo Incremental Proyectado", value="+22,500 bbls", delta="↑ Alta certidumbre")
+        st.markdown("""
+        <div class="metric-card">
+            <div class="metric-title">Crudo Incremental Proyectado</div>
+            <div class="metric-value">+22,500 <span style="font-size: 1.2rem;">bbls</span></div>
+            <div class="metric-delta">↑ Con base en simulación térmica</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
     with col2:
-        st.metric(label="Ganancia Operativa Adicional", value="+$1.5M USD", delta="Neto de Capex/Opex")
+        st.markdown("""
+        <div class="metric-card">
+            <div class="metric-title">Ganancia Operativa Neta</div>
+            <div class="metric-value">+$1.5M <span style="font-size: 1.2rem;">USD</span></div>
+            <div class="metric-delta">Neto de Capex/Opex y Polímero</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
     with col3:
-        # Usamos HTML para forzar el color Cyan en el Success Fee para distinguirlo
-        st.markdown(f"""
-            <div style='background-color: #111827; padding: 1rem; border-radius: 0.5rem; border: 1px solid #1F2937;'>
-                <p style='color: #9CA3AF; margin-bottom: 0;'>Tarifa FlowBio (Success Fee)</p>
-                <h2 style='color: #00E5FF; margin-top: 0;'>$67,500 USD</h2>
-                <p style='color: #6B7280; font-size: 0.8rem; margin-bottom: 0;'>* Solo facturable sobre extracción exitosa</p>
-            </div>
+        st.markdown("""
+        <div class="metric-card" style="border-color: #00E5FF; background-color: #0d1520;">
+            <div class="metric-title">Tarifa FlowBio (Success Fee)</div>
+            <div class="metric-value cyan">$67,500 <span style="font-size: 1.2rem;">USD</span></div>
+            <div class="metric-delta" style="color: #8b949e;">* 100% ligada al éxito de extracción</div>
+        </div>
         """, unsafe_allow_html=True)
 
-    st.divider()
+    st.write("<br>", unsafe_allow_html=True)
 
     # --- VISUALIZACIÓN GRÁFICA (Plotly) ---
-    st.markdown("### 📈 Curva de Declinación (DCA) vs Intervención FlowBio")
-    
-    # Generación de datos dummy matemáticamente coherentes
+    # Generación de datos dummy matemáticos (Sin cambiar tu lógica)
     meses = np.arange(1, 37)
     intervencion_mes = 12
-    
-    # Baseline: Declinación exponencial
     baseline = 3000 * np.exp(-0.06 * meses)
-    
-    # Optimized: Empuje por inyección de polímeros (a partir del mes de intervención)
     optimized = np.copy(baseline)
     optimized[intervencion_mes:] = baseline[intervencion_mes:] + 1200 * np.exp(-0.03 * (meses[intervencion_mes:] - intervencion_mes))
     
-    # Creación del gráfico Plotly
     fig = go.Figure()
 
-    # Trazo 1: Línea Base (Status Quo)
+    # Línea Base
     fig.add_trace(go.Scatter(
         x=meses, y=baseline,
         mode='lines',
-        name='Status Quo (Declinación Base)',
-        line=dict(color='#FF3366', width=3, dash='dash') # Rojo oscuro
+        name='Status Quo (DCA)',
+        line=dict(color='#ff5f56', width=3, dash='dash') 
     ))
 
-    # Trazo 2: Proyección FlowBio con área sombreada
+    # Línea FlowBio
     fig.add_trace(go.Scatter(
         x=meses, y=optimized,
         mode='lines',
-        name='Proyección Optimizada FlowBio',
-        line=dict(color='#39FF14', width=4), # Verde Neón
-        fill='tonexty', # Sombrear hasta la línea anterior (Baseline)
-        fillcolor='rgba(57, 255, 20, 0.15)' # Verde Neón translúcido
+        name='FlowBio Optimizada',
+        line=dict(color='#39FF14', width=4), 
+        fill='tonexty', 
+        fillcolor='rgba(57, 255, 20, 0.1)' 
     ))
     
-    # Punto de Intervención
+    # Línea de intervención
     fig.add_vline(x=intervencion_mes, line_width=1, line_dash="dot", line_color="#00E5FF")
     fig.add_annotation(
-        x=intervencion_mes, y=2800,
-        text="Inicio Inyección Na-CMC",
-        showarrow=True, arrowhead=1, arrowcolor="#00E5FF",
+        x=intervencion_mes, y=max(optimized)*0.9,
+        text="Inyección Na-CMC",
+        showarrow=True, arrowhead=2, arrowcolor="#00E5FF",
         font=dict(color="#00E5FF", size=12),
-        ax=40, ay=-40
+        ax=40, ay=-30
     )
 
-    # Diseño del Layout (Dark Mode puro)
     fig.update_layout(
         template="plotly_dark",
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         xaxis_title="Meses Operativos",
         yaxis_title="Producción (bbls/mes)",
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         margin=dict(l=0, r=0, t=50, b=0),
-        hovermode="x unified"
+        hovermode="x unified",
+        font=dict(family="Courier New, monospace")
     )
 
     st.plotly_chart(fig, use_container_width=True)
-    
-    # Etiqueta explicativa
-    st.caption("🟢 **Área de Barriles Incrementales:** Volumen adicional recuperado gracias a la optimización de la tasa de movilidad y la reducción del *fingering* viscoso.")
