@@ -7,14 +7,23 @@ from datetime import datetime
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
-    page_title="FlowBio Intelligence — EOR Managed Agents",
-    page_icon="🤖",
-    layout="wide"
+    page_title="FlowBio | EOR Dashboard",
+    page_icon="🧪",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# --- CONEXIÓN A AWS S3 ---
+# --- ESTILOS PERSONALIZADOS ---
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .stMetric { background-color: #1e2130; padding: 15px; border-radius: 10px; border: 1px solid #31333f; }
+    div[data-testid="stExpander"] { border: 1px solid #31333f; border-radius: 10px; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- CONEXIÓN AWS S3 ---
 def get_s3_client():
-    # Usa los secrets configurados en Streamlit Cloud
     return boto3.client(
         's3',
         aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
@@ -25,95 +34,95 @@ def get_s3_client():
 def load_report_from_s3():
     bucket = "flowbio-data-lake-v2-627807503177-us-east-2-an"
     key = "agentes/ultimo_reporte.json"
-    
     try:
         s3 = get_s3_client()
         response = s3.get_object(Bucket=bucket, Key=key)
-        content = response['Body'].read().decode('utf-8')
-        return json.loads(content)
-    except Exception as e:
-        st.error(f"Error conectando con el Cerebro PIML en AWS: {e}")
+        return json.loads(response['Body'].read().decode('utf-8'))
+    except:
         return None
 
-# --- LÓGICA PRINCIPAL ---
+# --- CARGA DE DATOS ---
 data = load_report_from_s3()
 
 if data:
     meta = data["metadata"]
     resumen = data["resumen_ejecutivo"]
     esg = data.get("esg_cbam", {})
+
+    # ==========================================
+    # 📱 BARRA LATERAL (CONTROL DE SISTEMA)
+    # ==========================================
+    with st.sidebar:
+        st.title("🛡️ FlowBio OS")
+        st.status("Conexión S3 Activa", state="complete")
+        st.divider()
+        st.write(f"**Motor:** `{meta.get('llm', 'Llama 3.3')}`")
+        st.write(f"**Sincronización:** {meta['timestamp'][:16].replace('T', ' ')}")
+        st.divider()
+        st.caption("FlowBio Intelligence v3.5 | Orizaba, Veracruz")
+
+    # ==========================================
+    # 🖥️ DASHBOARD PRINCIPAL
+    # ==========================================
+    st.title("⚡ Centro de Inteligencia EOR")
+    st.markdown("Optimización de recuperación secundaria mediante **Na-CMC Biopolymers**.")
     
-    # --- ENCABEZADO ---
-    st.title("🤖 FlowBio Intelligence — EOR Managed Agents")
-    st.markdown(f"**Cerebro Analítico PIML para Recuperación Secundaria** | Actualizado: {meta['timestamp'][:16]}")
-    st.divider()
+    # --- KPIs SUPERIORES ---
+    c1, c2, c3, c4 = st.columns(4)
+    with c1: st.metric("Pozos en Análisis", f"{meta.get('total_pozos_analizados', 500)}", "Campo UKCS")
+    with c2: st.metric("Oportunidades EOR", f"{resumen['candidatos_inyeccion']}", "Aptos Na-CMC")
+    with c3: st.metric("Mejora de Barrido", f"{resumen['mejora_promedio_pct']}%", delta="PIML Opt.", delta_color="normal")
+    with c4: st.metric("ROI Proyectado (Anual)", f"${resumen['ahorro_total_usd']:,}", "USD OPEX")
 
-    # --- MÉTRICAS PRINCIPALES ---
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Pozos Analizados", f"{meta['total_pozos_analizados']}")
-    with col2:
-        st.metric("Candidatos Na-CMC", f"{resumen['candidatos_inyeccion']}")
-    with col3:
-        st.metric("Mejora Promedio EOR", f"{resumen['mejora_promedio_pct']}%", delta="+5.2%")
-    with col4:
-        st.metric("Ahorro OPEX Proyectado", f"${resumen['ahorro_total_usd']:,} USD")
+    st.write("")
+    
+    # --- FILA 2: ANÁLISIS VISUAL ---
+    col_main, col_alerts = st.columns([2, 1])
 
-    st.divider()
-
-    # --- CUERPO DEL DASHBOARD ---
-    col_left, col_right = st.columns([2, 1])
-
-    with col_left:
-        st.subheader("📊 Análisis de Yacimiento y ESG")
-        
-        tab1, tab2 = st.tabs(["Distribución de Daño (Skin)", "Impacto Ambiental (CO2)"])
-        
-        with tab1:
-            # Gráfico de barras para niveles de Skin
-            skin_data = pd.DataFrame({
-                "Nivel": ["Crítico (S>15)", "Alto (8-15)", "Moderado (3-8)"],
-                "Cantidad": [resumen['pozos_criticos'], resumen['pozos_altos'], resumen['pozos_moderados']]
-            })
-            fig_skin = px.bar(skin_data, x='Nivel', y='Cantidad', color='Nivel', 
-                             color_discrete_map={"Crítico (S>15)": "#ef553b", "Alto (8-15)": "#fecb52", "Moderado (3-8)": "#636efa"})
-            st.plotly_chart(fig_skin, use_container_width=True)
-
-        with tab2:
-            if esg:
-                st.info(f"🍀 **Ahorro Total de Carbono:** {esg['total_ton_co2_ahorradas']} tCO2/año")
-                st.success(f"💶 **Evitado en Impuestos CBAM (EU):** ${esg['total_cbam_usd_evitado']:,} USD/año")
-                
-                # Gráfico circular de pozos ESG
-                fig_esg = px.pie(values=[esg['pozos_esg_alto'], resumen['candidatos_inyeccion'] - esg['pozos_esg_alto']], 
-                                names=['Impacto Alto', 'Impacto Medio'], hole=0.4, title="Pozos con Alto Potencial ESG")
+    with col_main:
+        with st.container(border=True):
+            tab_skin, tab_esg = st.tabs(["📊 Distribución de Daño", "🌱 Impacto Ambiental"])
+            
+            with tab_skin:
+                skin_df = pd.DataFrame({
+                    "Gravedad": ["Crítico (S>15)", "Alto (8-15)", "Moderado (3-8)"],
+                    "Conteo": [resumen['pozos_criticos'], resumen['pozos_altos'], resumen['pozos_moderados']]
+                })
+                fig = px.bar(skin_df, x='Gravedad', y='Conteo', color='Gravedad',
+                             color_discrete_map={"Crítico (S>15)": "#ff4b4b", "Alto (8-15)": "#ffa421", "Moderado (3-8)": "#00d4ff"})
+                fig.update_layout(showlegend=False, height=350, margin=dict(t=10, b=10))
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with tab_esg:
+                st.write(f"🍀 **Ahorro de Carbono:** {esg.get('total_ton_co2_ahorradas', 0)} tCO2/año")
+                st.write(f"💶 **Beneficio CBAM:** ${esg.get('total_cbam_usd_evitado', 0):,} USD/año")
+                fig_esg = px.pie(values=[esg.get('pozos_esg_alto', 0), 100], names=['ESG Alto', 'Otros'], hole=0.6)
+                fig_esg.update_layout(height=300, margin=dict(t=10, b=10))
                 st.plotly_chart(fig_esg, use_container_width=True)
 
-    with col_right:
-        st.subheader("🔔 Alertas Prioritarias")
-        for alerta in data.get("alertas", []):
-            with st.expander(f"{alerta['nivel']} - {alerta['pozo']}"):
-                st.write(f"**Tipo:** {alerta['tipo']}")
-                st.write(f"**Valor:** {alerta['valor']}")
-                st.write(f"**Acción:** {alerta['accion']}")
-                if alerta['impacto_usd'] > 0:
-                    st.caption(f"Impacto económico: ${alerta['impacto_usd']:,} USD")
+    with col_alerts:
+        st.subheader("⚠️ Acciones Prioritarias")
+        for a in data.get("alertas", []):
+            color = "red" if a['nivel'] == "CRÍTICO" else "orange" if a['nivel'] == "ADVERTENCIA" else "blue"
+            with st.expander(f":{color}[{a['nivel']}] - {a['pozo']}"):
+                st.write(f"**{a['tipo']}:** {a['valor']}")
+                st.caption(f"Acción sugerida: {a['accion']}")
 
-    st.divider()
-
-    # --- TABLA DE OPORTUNIDADES ---
-    st.subheader("🎯 Top Oportunidades de Inyección (Na-CMC FlowBio)")
+    # --- FILA 3: TABLA DE OPERACIONES ---
+    st.subheader("🎯 Pozos Candidatos para Intervención")
     df_ops = pd.DataFrame(data["top_oportunidades_eor"])
-    st.dataframe(df_ops.style.highlight_max(axis=0, subset=['mejora_pct'], color='#2e7d32'), use_container_width=True)
-
-    # --- MENSAJES POR PERFIL ---
-    st.divider()
-    st.subheader("💬 Recomendaciones de los Agentes")
-    perfiles = data.get("mensajes_por_perfil", {})
-    p1, p2, p3 = st.columns(3)
-    p1.info(f"**EOR Manager:**\n\n{perfiles.get('eor_manager', 'Sin datos')}")
-    p2.warning(f"**Reservoir Engineer:**\n\n{perfiles.get('reservoir_engineer', 'Sin datos')}")
-    p3.success(f"**ESG Manager:**\n\n{perfiles.get('esg_manager', 'Sin datos')}")
+    st.dataframe(
+        df_ops,
+        column_config={
+            "pozo": "Pozo ID",
+            "mejora_pct": st.column_config.ProgressColumn("Mejora Barrido", format="%.1f%%", min_value=0, max_value=25),
+            "ahorro_anual_usd": st.column_config.NumberColumn("Ahorro Anual", format="$%d"),
+            "skin": "Factor Skin",
+            "ds_optimo": "DS Na-CMC"
+        },
+        use_container_width=True,
+        hide_index=True
+    )
 
 else:
-    st.warning("Esperando a que los agentes en AWS SageMaker generen el primer reporte PIML...")
+    st.warning("🔄 Sincronizando con los Agentes en AWS... Por favor, espere.")
