@@ -119,4 +119,85 @@ html_code = """
                 </div>
                 <div class="flex gap-8 text-[9px] font-black mono">
                     <div class="flex items-center gap-2"><div class="w-3 h-0.5 bg-rose-500"></div><span class="text-rose-500">STATUS QUO</span></div>
-                    <div class="flex items-center gap-2"><div class="w-3 h-0.5 bg-emerald-500"></div>
+                    <div class="flex items-center gap-2"><div class="w-3 h-0.5 bg-emerald-500"></div><span class="text-emerald-500">FLOWBIO OPTIMIZED</span></div>
+                </div>
+            </div>
+            <div id="chart-div" class="w-full h-96"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const kIn = document.getElementById('k-input');
+            const vIn = document.getElementById('v-input');
+            
+            kIn.oninput = () => { document.getElementById('k-label').innerText = kIn.value; };
+            vIn.oninput = () => { document.getElementById('v-label').innerText = vIn.value; };
+
+            document.getElementById('btn-start').onclick = () => {
+                document.getElementById('view-landing').classList.add('hidden');
+                document.getElementById('view-config').classList.remove('hidden');
+            };
+
+            document.getElementById('btn-run').onclick = async () => {
+                const k = parseFloat(kIn.value);
+                const v = parseFloat(vIn.value);
+                document.getElementById('view-config').classList.add('hidden');
+                document.getElementById('view-terminal').classList.remove('hidden');
+                
+                const box = document.getElementById('log-box');
+                box.innerHTML = "";
+                const logs = ["> Initializing AWS Instance...", "> Running PIML Darcy Solver...", "> Calculating Incremental NPV...", "> Simulation Complete."];
+                
+                for (let l of logs) {
+                    let d = document.createElement('div');
+                    d.textContent = l;
+                    box.appendChild(d);
+                    await new Promise(r => setTimeout(r, 600));
+                }
+
+                document.getElementById('view-terminal').classList.add('hidden');
+                document.getElementById('view-dashboard').classList.remove('hidden');
+                
+                // CÁLCULOS DINÁMICOS
+                const extra = Math.round((k / v) * 2000);
+                const npv = (extra * 72) / 1000000; // Barril a $72
+                
+                document.getElementById('res-extra').innerText = "+" + extra.toLocaleString();
+                document.getElementById('res-npv').innerText = "$" + npv.toFixed(2) + "M";
+                document.getElementById('res-fee').innerText = "$" + Math.round(npv * 1000000 * 0.05).toLocaleString();
+                
+                renderPlot(extra);
+            };
+
+            document.getElementById('btn-back').onclick = () => {
+                document.getElementById('view-dashboard').classList.add('hidden');
+                document.getElementById('view-config').classList.remove('hidden');
+            };
+        });
+
+        function renderPlot(extra) {
+            const x = Array.from({length: 40}, (_, i) => i);
+            const y1 = x.map(v => 3000 * Math.exp(-0.06 * v));
+            const y2 = x.map((v, i) => i < 10 ? y1[i] : y1[i] + (extra/50) * Math.exp(-0.02 * (i-10)));
+            
+            Plotly.newPlot('chart-div', [
+                {x: x, y: y1, name: 'Status Quo', type: 'scatter', line: {color: '#f43f5e', dash: 'dot', width: 2}},
+                {x: x, y: y2, name: 'FlowBio', type: 'scatter', line: {color: '#10b981', width: 4}, fill: 'tonexty', fillcolor: 'rgba(16,185,129,0.05)'}
+            ], {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: {l: 50, r: 20, t: 0, b: 40},
+                showlegend: false,
+                font: {family: 'JetBrains Mono', color: '#4b5563'},
+                xaxis: { gridcolor: '#1e262f', title: 'MONTHS' },
+                yaxis: { gridcolor: '#1e262f', title: 'BBL/DAY' }
+            }, {responsive: true, displayModeBar: false});
+        }
+    </script>
+</body>
+</html>
+"""
+
+# 4. LANZAMIENTO
+components.html(html_code, height=1200, scrolling=True)
