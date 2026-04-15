@@ -142,21 +142,6 @@ html, body {
   box-shadow: 0 0 60px rgba(0,229,160,.4);
 }
 
-.splash-stats {
-  display: flex; gap: 48px; margin-top: 64px;
-  animation: fadeUp .8s .45s ease both;
-}
-.splash-stat { text-align: center; }
-.splash-stat-val {
-  font-family: var(--mono); font-size: 28px; font-weight: 500;
-  color: var(--text);
-}
-.splash-stat-lbl {
-  font-family: var(--mono); font-size: 10px;
-  color: var(--muted); letter-spacing: 1.5px; margin-top: 4px;
-}
-.splash-stat-val.g { color: var(--green); }
-
 @keyframes fadeUp {
   from { opacity:0; transform:translateY(24px); }
   to   { opacity:1; transform:translateY(0); }
@@ -409,8 +394,10 @@ input[type=range].fin-slider { accent-color: var(--cyan); }
         <div class="field">
           <label>CUENCA / REGIÓN</label>
           <select id="basin-input">
+            <option value="ukcs">UKCS · North Sea</option>
             <option value="mexico">México · Cuenca de Burgos</option>
             <option value="colombia">Colombia · Llanos Orientales</option>
+            <option value="argentina">Argentina · Vaca Muerta</option>
           </select>
         </div>
 
@@ -683,7 +670,12 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function renderDash() {
   const r = SIM;
 
-  document.getElementById('dash-meta').textContent = `ACTIVO · SIMULACIÓN PIML v0.3`;
+  const basinNames = {
+    ukcs:'UKCS NORTH SEA', mexico:'CUENCA DE BURGOS',
+    colombia:'LLANOS ORIENTALES', argentina:'VACA MUERTA'
+  };
+  
+  document.getElementById('dash-meta').textContent = `ACTIVO · ${basinNames[r.basin]} · SIMULACIÓN PIML v0.3`;
 
   document.getElementById('kpi-extra').textContent = '+' + fmt(r.extra_bbl_month);
   document.getElementById('kpi-skin').textContent = r.skin.toFixed(2);
