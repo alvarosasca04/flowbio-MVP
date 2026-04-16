@@ -7,4 +7,3 @@ pillow
 python-dotenv
 langchain-groq
 crewai
-groq
