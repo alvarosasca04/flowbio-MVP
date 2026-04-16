@@ -1,6 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import base64
+import boto3
+import json
+from datetime import datetime
 
 # ══════════════════════════════════════════════════════
 # CONFIGURACIÓN GENERAL (STREAMLIT)
@@ -21,7 +24,39 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════
-# EL MOTOR DEL DASHBOARD INTERACTIVO (HTML + JS)
+# DATOS AWS S3 (PARA MODO DEMO) Y TIPO DE CAMBIO
+# ══════════════════════════════════════════════════════
+USD_TO_MXN = 20.0
+
+@st.cache_data(ttl=30)
+def fetch_s3_data():
+    try:
+        s3 = boto3.client("s3", region_name="us-east-2")
+        bucket = "flowbio-data-lake-v2-627807503177-us-east-2-an"
+        key = "agentes/ultimo_reporte.json"
+        response = s3.get_object(Bucket=bucket, Key=key)
+        return json.loads(response['Body'].read().decode('utf-8'))
+    except Exception as e:
+        return None
+
+reporte = fetch_s3_data()
+
+r = reporte["resumen_ejecutivo"] if reporte else {}
+esg = reporte["esg_cbam"] if reporte else {}
+
+s3_pozos = r.get("pozos_piloto", 10)
+s3_ahorro = r.get("ahorro_total_usd", 1620000)
+s3_mejora = r.get("mejora_promedio_pct", 16.5)
+s3_fee = r.get("fee_mensual_usd", 21900)
+s3_skin = r.get("skin_promedio", 4.2)
+s3_co2 = esg.get("total_ton_co2_ahorradas", 833)
+s3_wc = r.get("wc_reduccion_pct", 18.4)
+s3_eur = r.get("eur_extra_bbls", 425000)
+s3_pb = r.get("payback_meses", 1.2)
+s3_lc = r.get("lc_caida_usd", 2.15)
+
+# ══════════════════════════════════════════════════════
+# INTERFAZ NATIVA HTMl / CSS / JS
 # ══════════════════════════════════════════════════════
 HTML_BASE = r"""
 <!DOCTYPE html>
@@ -44,21 +79,19 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
 .screen { display: none; min-height: 90vh; width: 100%; flex-direction: column; align-items: center; justify-content: center;}
 .screen.active { display: flex; }
 
-/* SPLASH SCREEN */
-.logo-title { font-family: var(--head); font-size: 90px; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing:-3px;}
-.logo-title span { color: var(--green); }
-
 /* BOTONES */
 .btn-main { background: var(--green); color: #060B11; font-family: var(--head); font-weight: 800; font-size: 13px; letter-spacing: 2px; padding: 18px 45px; border-radius: 8px; border: none; cursor: pointer; transition: 0.3s; text-transform: uppercase;}
 .btn-main:hover { filter: brightness(1.2); box-shadow: 0 0 30px rgba(0,229,160,0.4); transform: translateY(-2px);}
 .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; padding: 18px 40px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
 .btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
 
-/* CONTROLES SUPERIORES */
-.control-panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width:100%;}
-.ctrl-group label { display: block; font-family: var(--mono); font-size: 9px; color: var(--cyan); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;}
-.ctrl-group select, .ctrl-group input { width: 100%; background: #060B11; border: 1px solid var(--border); color: #fff; padding: 10px; border-radius: 6px; font-family: var(--mono); font-size: 12px; outline: none;}
-.ctrl-group select:focus, .ctrl-group input:focus { border-color: var(--green); }
+/* PANTALLA CONFIGURACIÓN MANUAL */
+.setup-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 100%; max-width: 800px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
+.setup-title { font-family: var(--head); font-size: 24px; color: #fff; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 15px;}
+.ctrl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+.ctrl-group label { display: block; font-family: var(--mono); font-size: 10px; color: var(--cyan); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;}
+.ctrl-group select, .ctrl-group input { width: 100%; background: #060B11; border: 1px solid var(--border); color: #fff; padding: 15px; border-radius: 8px; font-family: var(--mono); font-size: 14px; outline: none; transition:0.3s;}
+.ctrl-group select:focus, .ctrl-group input:focus { border-color: var(--green); box-shadow: 0 0 10px rgba(0,229,160,0.1);}
 
 /* DASHBOARD LAYOUT */
 .dash-wrap { width: 100%; max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; align-items: stretch;}
@@ -90,12 +123,52 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
 <body>
 
 <div id="s-splash" class="screen active" style="background: radial-gradient(circle at center, #0D1A2A 0%, #060B11 100%);">
-  <h1 class="logo-title">FlowBio<span>.</span></h1>
+  <h1 style="font-family: var(--head); font-size: 90px; font-weight: 800; color: #fff; margin-bottom: 10px; letter-spacing:-3px;">FlowBio<span style="color:var(--green)">.</span></h1>
   <p style="font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: 4px; margin-bottom: 60px;">SUBSURFACE INTELLIGENCE OS</p>
   
   <div style="display:flex; gap:20px;">
-    <button class="btn-main" onclick="bootSystem('s3')">Demo Piloto (10 Pozos S3)</button>
-    <button class="btn-ghost" onclick="bootSystem('manual')">Simulador Manual Libre</button>
+    <button class="btn-main" onclick="bootSystem('s3')">Ejecutar Demo Real (AWS S3)</button>
+    <button class="btn-ghost" onclick="go('s-setup')">Nuevo Simulador de Venta</button>
+  </div>
+</div>
+
+<div id="s-setup" class="screen" style="background: radial-gradient(circle at center, #0D1A2A 0%, #060B11 100%);">
+  <div class="setup-card">
+    <div class="setup-title">Configuración de Parámetros EOR</div>
+    
+    <div class="ctrl-grid">
+        <div class="ctrl-group">
+            <label>Químico Inyectado</label>
+            <select id="in-fluido">
+                <option value="nacmc">Na-CMC FlowBio (Eco-Seguro)</option>
+                <option value="hpam">HPAM Tradicional (Sintético)</option>
+            </select>
+        </div>
+        <div class="ctrl-group">
+            <label>Metalurgia (Tubing)</label>
+            <select id="in-tuberia">
+                <option value="carbon">Acero al Carbono (Estándar)</option>
+                <option value="cra">Aleación CRA (Inoxidable)</option>
+            </select>
+        </div>
+        <div class="ctrl-group">
+            <label>Pozos a Simular</label>
+            <input type="number" id="in-pozos" value="15">
+        </div>
+        <div class="ctrl-group">
+            <label>Prod. Base (BPD/Pozo)</label>
+            <input type="number" id="in-bpd" value="350">
+        </div>
+        <div class="ctrl-group" style="grid-column: span 2;">
+            <label>Success Fee Propuesto ($/bbl)</label>
+            <input type="number" id="in-fee" value="5.0" step="0.5">
+        </div>
+    </div>
+    
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <button class="btn-ghost" style="padding: 15px 25px; border:none;" onclick="go('s-splash')">← Volver al Inicio</button>
+        <button class="btn-main" onclick="bootSystem('manual')">⚡ Iniciar Proyección</button>
+    </div>
   </div>
 </div>
 
@@ -106,40 +179,14 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
 <div id="s-dash" class="screen" style="justify-content: flex-start; padding-top:10px;">
   <div class="dash-wrap">
     
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 15px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 25px;">
         <div>
             <h1 style="font-family:var(--head); font-size:28px; color:#fff; margin-bottom:0;" id="dash-title">FlowBio Command Center</h1>
-            <p style="font-family:var(--mono); font-size:10px; color:var(--cyan); letter-spacing:2px; margin-top:5px;" id="dash-origen">ORIGEN: S3 CLOUD</p>
+            <p style="font-family:var(--mono); font-size:10px; color:var(--cyan); letter-spacing:2px; margin-top:5px;" id="dash-origen">ORIGEN DE DATOS</p>
         </div>
-        <button onclick="go('s-splash')" class="btn-ghost" style="padding:10px 20px; font-size:10px;">← REINICIAR PLATAFORMA</button>
-    </div>
-
-    <div class="control-panel">
-        <div class="ctrl-group">
-            <label>Químico Inyectado</label>
-            <select id="in-fluido" onchange="runMath()">
-                <option value="nacmc">Na-CMC FlowBio (Eco-Seguro)</option>
-                <option value="hpam">HPAM Tradicional (Sintético)</option>
-            </select>
-        </div>
-        <div class="ctrl-group">
-            <label>Metalurgia (Tubing)</label>
-            <select id="in-tuberia" onchange="runMath()">
-                <option value="carbon">Acero al Carbono (Estándar)</option>
-                <option value="cra">Aleación CRA (Inoxidable)</option>
-            </select>
-        </div>
-        <div class="ctrl-group">
-            <label>Pozos a Simular</label>
-            <input type="number" id="in-pozos" value="10" oninput="runMath()">
-        </div>
-        <div class="ctrl-group">
-            <label>Prod. Base (BPD/Pozo)</label>
-            <input type="number" id="in-bpd" value="350" oninput="runMath()">
-        </div>
-        <div class="ctrl-group">
-            <label>Success Fee ($/bbl)</label>
-            <input type="number" id="in-fee" value="5.0" step="0.5" oninput="runMath()">
+        <div style="display:flex; gap:10px;">
+            <button id="btn-edit" onclick="go('s-setup')" class="btn-ghost" style="padding:10px 20px; font-size:10px;">⚙️ EDITAR PARÁMETROS</button>
+            <button onclick="go('s-splash')" class="btn-ghost" style="padding:10px 20px; font-size:10px;">🏠 INICIO</button>
         </div>
     </div>
 
@@ -214,7 +261,14 @@ body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-s
 </div>
 
 <script>
-const TC_MXN = 20.0;
+const TC_MXN = parseFloat("__TC_MXN__");
+
+// DATOS S3 PARA DEMO REAL
+const S3_DATA = {
+    pozos: parseInt("__S3_POZOS__"), ahorro: parseFloat("__S3_AHORRO__"), mejora: parseFloat("__S3_MEJORA__"),
+    fee: parseFloat("__S3_FEE__"), skin: parseFloat("__S3_SKIN__"), co2: parseFloat("__S3_CO2__"), 
+    wc: parseFloat("__S3_WC__"), eur: parseFloat("__S3_EUR__"), pb: parseFloat("__S3_PB__"), lc: parseFloat("__S3_LC__")
+};
 
 function formatUsd(n) { return n >= 1e6 ? '$'+(n/1e6).toFixed(2)+'M' : (n >= 1e3 ? '$'+(n/1e3).toFixed(1)+'K' : '$'+Math.round(n).toLocaleString()); }
 function formatMxn(n) { let mxn = n * TC_MXN; return mxn >= 1e6 ? '≈ $'+(mxn/1e6).toFixed(2)+'M MXN' : '≈ $'+Math.round(mxn).toLocaleString()+' MXN'; }
@@ -227,83 +281,107 @@ async function bootSystem(mode) {
     const box = document.getElementById('term-log'); box.innerHTML = '';
     
     if(mode === 's3') {
-        const logs = [ `> Estableciendo túnel seguro con AWS S3...`, `> Aislando bloque piloto de 10 pozos...`, `> Resolviendo tensores de permeabilidad PIML...`, `> ✓ Piloto cargado exitosamente.` ];
-        for (let l of logs) { box.innerHTML += `<div>${l}</div>`; await new Promise(r => setTimeout(r, 500)); }
+        const logs = [ `> Estableciendo túnel seguro con AWS S3...`, `> Aislando bloque piloto de ${S3_DATA.pozos} pozos...`, `> ✓ Piloto S3 cargado exitosamente.` ];
+        for (let l of logs) { box.innerHTML += `<div>${l}</div>`; await new Promise(r => setTimeout(r, 600)); }
         
-        // Pre-setear valores para la Demo S3
-        document.getElementById('in-pozos').value = 10;
-        document.getElementById('in-fluido').value = 'nacmc';
-        document.getElementById('in-tuberia').value = 'carbon';
-        document.getElementById('dash-title').innerText = "FlowBio Insight - Piloto Comercial";
+        document.getElementById('dash-title').innerText = "FlowBio Insight - Piloto Comercial S3";
         document.getElementById('dash-origen').innerText = "ORIGEN: DATOS REALES (AWS S3 US-EAST-2)";
+        document.getElementById('btn-edit').style.display = "none"; // Ocultar editar en modo S3
+        
+        runMath('s3');
     } else {
-        const logs = [ `> Inicializando Motor de Física Darcy local...`, `> Cargando variables editables...`, `> ✓ Simulador Libre listo.` ];
+        const logs = [ `> Inicializando Motor Físico PIML...`, `> Evaluando condiciones del yacimiento...`, `> ✓ Simulación completada.` ];
         for (let l of logs) { box.innerHTML += `<div>${l}</div>`; await new Promise(r => setTimeout(r, 400)); }
         
-        // Pre-setear valores para Simulador Manual
-        document.getElementById('in-pozos').value = 50;
-        document.getElementById('dash-title').innerText = "FlowBio Simulator - Modo Libre";
+        document.getElementById('dash-title').innerText = "FlowBio Simulator - Proyección Personalizada";
         document.getElementById('dash-origen').innerText = "ORIGEN: PARÁMETROS MANUALES (LOCAL)";
+        document.getElementById('btn-edit').style.display = "block"; // Mostrar editar en modo manual
+        
+        runMath('manual');
     }
 
     await new Promise(r => setTimeout(r, 400));
-    runMath(); // Ejecuta los cálculos
-    go('s-dash'); // Muestra el Dashboard
+    go('s-dash'); // Mostrar Dashboard
 }
 
-function runMath() {
-    // 1. Leer Controles Actuales
-    const fluido = document.getElementById('in-fluido').value;
-    const tuberia = document.getElementById('in-tuberia').value;
-    const pozos = parseInt(document.getElementById('in-pozos').value) || 0;
-    const bpd = parseFloat(document.getElementById('in-bpd').value) || 0;
-    const fee = parseFloat(document.getElementById('in-fee').value) || 0;
-
-    // 2. Motor Físico B2B
+function runMath(mode) {
     let mejora = 0, corrosion_mpy = 0, costo_mitigacion_mensual = 0;
-    let co2_tons = 0, toxic_msg = "", pb_meses = 0, wc_red = 0;
-    let color_esg = "var(--green)", color_mpy = "var(--green)", color_ahorro = "var(--green)";
-
-    const prod_base_total = pozos * bpd;
-
-    if(fluido === 'nacmc') {
-        mejora = 0.165; 
-        co2_tons = (prod_base_total * mejora) * 1.2; 
+    let co2_tons = 0, toxic_msg = "", pb_meses = 0, wc_red = 0, prod_base_total = 0, extra_bpd = 0, eur = 0, opex_ahorro_anual = 0, fee_mensual = 0;
+    let color_esg = "var(--green)", color_mpy = "var(--green)", color_ahorro = "var(--green)", lineCol = "#00E5A0", fillCol = "rgba(0,229,160,0.15)";
+    
+    if(mode === 's3') {
+        // DATOS S3 INAMOVIBLES (Na-CMC por defecto en tu demo de S3)
+        prod_base_total = S3_DATA.pozos * 350;
+        mejora = S3_DATA.mejora / 100;
+        extra_bpd = prod_base_total * mejora;
+        opex_ahorro_anual = S3_DATA.ahorro;
+        fee_mensual = S3_DATA.fee;
+        co2_tons = S3_DATA.co2;
         toxic_msg = "Biodegradable (Seguro)";
-        pb_meses = 1.2;
-        wc_red = 18.5;
-        
-        if(tuberia === 'carbon') { corrosion_mpy = 0.8; } else { corrosion_mpy = 0.1; }
-        costo_mitigacion_mensual = 0;
-        
+        pb_meses = S3_DATA.pb;
+        wc_red = S3_DATA.wc;
+        corrosion_mpy = 0.8; // Na-CMC = Seguro
+        eur = S3_DATA.eur;
     } else {
-        mejora = 0.112; 
-        co2_tons = 0; 
-        toxic_msg = "Emisor Tóxico (H2S/NH3)";
-        pb_meses = 3.8;
-        wc_red = 9.2;
-        color_esg = "var(--red)";
+        // DATOS DEL FORMULARIO MANUAL
+        const fluido = document.getElementById('in-fluido').value;
+        const tuberia = document.getElementById('in-tuberia').value;
+        const pozos = parseInt(document.getElementById('in-pozos').value) || 0;
+        const bpd = parseFloat(document.getElementById('in-bpd').value) || 0;
+        const fee = parseFloat(document.getElementById('in-fee').value) || 0;
 
-        if(tuberia === 'carbon') {
-            corrosion_mpy = 25.0; 
-            costo_mitigacion_mensual = pozos * 8000; 
-            color_mpy = "var(--red)";
+        prod_base_total = pozos * bpd;
+
+        if(fluido === 'nacmc') {
+            mejora = 0.165; 
+            co2_tons = (prod_base_total * mejora) * 1.2; 
+            toxic_msg = "Biodegradable (Seguro)";
+            pb_meses = 1.2;
+            wc_red = 18.5;
+            corrosion_mpy = (tuberia === 'carbon') ? 0.8 : 0.1;
+            costo_mitigacion_mensual = 0;
         } else {
-            corrosion_mpy = 5.0; 
-            costo_mitigacion_mensual = pozos * 2000;
-            color_mpy = "var(--amber)";
-        }
-    }
+            mejora = 0.112; 
+            co2_tons = 0; 
+            toxic_msg = "Emisor Tóxico (H2S/NH3)";
+            pb_meses = 3.8;
+            wc_red = 9.2;
+            color_esg = "var(--red)";
+            lineCol = "#EF4444";
+            fillCol = "rgba(239,68,68,0.15)";
 
-    // 3. Matemáticas Financieras
-    const extra_bpd = prod_base_total * mejora;
-    const fee_mensual = extra_bpd * 30 * fee;
-    const opex_ahorro_anual = (extra_bpd * 365 * 18.5) - (costo_mitigacion_mensual * 12);
-    const eur = extra_bpd * 365 * 5 * 0.8;
+            if(tuberia === 'carbon') {
+                corrosion_mpy = 25.0; 
+                costo_mitigacion_mensual = pozos * 8000; 
+                color_mpy = "var(--red)";
+            } else {
+                corrosion_mpy = 5.0; 
+                costo_mitigacion_mensual = pozos * 2000;
+                color_mpy = "var(--amber)";
+            }
+            
+            // Mostrar Alerta en HPAM
+            const alertBox = document.getElementById('ui-alert');
+            const alertText = document.getElementById('ui-alert-text');
+            alertBox.style.display = "block";
+            if(tuberia === 'carbon') {
+                alertText.innerText = `El HPAM libera H2S destrozando el Acero al Carbono. La mitigación penaliza el OPEX en -$${formatUsd(costo_mitigacion_mensual*12)}/año.`;
+            } else {
+                alertText.innerText = `La Aleación CRA protege, pero el HPAM exige mantenimiento químico extra penalizando OPEX en -$${formatUsd(costo_mitigacion_mensual*12)}/año.`;
+            }
+        }
+        
+        if (fluido === 'nacmc') { document.getElementById('ui-alert').style.display = "none"; }
+
+        extra_bpd = prod_base_total * mejora;
+        fee_mensual = extra_bpd * 30 * fee;
+        opex_ahorro_anual = (extra_bpd * 365 * 18.5) - (costo_mitigacion_mensual * 12);
+        eur = extra_bpd * 365 * 5 * 0.8;
+    }
 
     if(opex_ahorro_anual < 0) color_ahorro = "var(--red)";
 
-    // 4. Actualizar UI
+    // 4. Actualizar UI General
     document.getElementById('ui-ahorro-usd').innerText = formatUsd(opex_ahorro_anual);
     document.getElementById('ui-ahorro-usd').style.color = color_ahorro;
     document.getElementById('ui-ahorro-mxn').innerText = formatMxn(opex_ahorro_anual);
@@ -324,26 +402,11 @@ function runMath() {
     
     document.getElementById('ui-mpy').innerText = `${corrosion_mpy.toFixed(1)} mpy`;
     document.getElementById('ui-mpy').style.color = color_mpy;
-    
-    // Alerta de Corrosión
-    const alertBox = document.getElementById('ui-alert');
-    const alertText = document.getElementById('ui-alert-text');
-    if(fluido === 'hpam' && tuberia === 'carbon') {
-        alertBox.style.display = "block";
-        alertText.innerText = `El HPAM libera H2S destrozando el Acero al Carbono. La mitigación penaliza el OPEX en -$${formatUsd(costo_mitigacion_mensual*12)}/año.`;
-    } else if (fluido === 'hpam' && tuberia === 'cra') {
-        alertBox.style.display = "block";
-        alertText.innerText = `La Aleación CRA protege, pero el HPAM exige mantenimiento químico extra penalizando OPEX en -$${formatUsd(costo_mitigacion_mensual*12)}/año.`;
-    } else {
-        alertBox.style.display = "none";
-    }
 
-    // 5. Graficar
+    // 5. Graficar Plotly
     const x = Array.from({length:40}, (_,i)=>i);
     const y1 = x.map(i => prod_base_total * Math.exp(-0.06*i));
     const y2 = x.map(i => i<5 ? y1[i] : y1[i] + (prod_base_total * mejora * Math.exp(-0.015*(i-5))));
-    const fillCol = fluido === 'nacmc' ? 'rgba(0,229,160,0.15)' : 'rgba(239,68,68,0.15)'; // Rojo si es HPAM para asustar un poco
-    const lineCol = fluido === 'nacmc' ? '#00E5A0' : '#EF4444';
 
     Plotly.newPlot('chart-div', [
         {x:x, y:y1, name:'Baseline', type:'scatter', line:{color:'#64748B',dash:'dot',width:2}, hoverinfo:'none'},
@@ -360,7 +423,12 @@ function runMath() {
 </html>
 """
 
-b64_html = base64.b64encode(HTML_BASE.encode()).decode()
-iframe_html = f'<iframe src="data:text/html;base64,{b64_html}" width="100%" height="950px" style="border:none; border-radius:12px;"></iframe>'
+# Reemplazo Seguro
+html_final = HTML_BASE.replace("__S3_POZOS__", str(s3_pozos)).replace("__S3_AHORRO__", str(s3_ahorro))
+html_final = html_final.replace("__S3_MEJORA__", str(s3_mejora)).replace("__S3_FEE__", str(s3_fee))
+html_final = html_final.replace("__S3_SKIN__", str(s3_skin)).replace("__S3_CO2__", str(s3_co2))
+html_final = html_final.replace("__S3_WC__", str(s3_wc)).replace("__S3_EUR__", str(s3_eur))
+html_final = html_final.replace("__S3_PB__", str(s3_pb)).replace("__S3_LC__", str(s3_lc))
+html_final = html_final.replace("__TC_MXN__", str(USD_TO_MXN))
 
-st.components.v1.html(HTML_BASE, height=950, scrolling=True)
+components.html(html_final, height=1050, scrolling=True)
