@@ -1,7 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import boto3
-import json
+import base64
 
 # ══════════════════════════════════════════════════════
 # CONFIGURACIÓN GENERAL (STREAMLIT)
@@ -22,50 +21,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════
-# CONEXIÓN AL CEREBRO GROQ (AWS S3) Y TIPO DE CAMBIO
-# ══════════════════════════════════════════════════════
-USD_TO_MXN = 20.0  # Tipo de cambio de referencia
-
-@st.cache_data(ttl=30)
-def fetch_s3_data():
-    try:
-        s3 = boto3.client("s3", region_name="us-east-2")
-        bucket = "flowbio-data-lake-v2-627807503177-us-east-2-an"
-        key = "agentes/ultimo_reporte.json"
-        
-        response = s3.get_object(Bucket=bucket, Key=key)
-        data = json.loads(response['Body'].read().decode('utf-8'))
-        return data
-    except Exception as e:
-        return None
-
-reporte = fetch_s3_data()
-
-# Extracción de Datos S3 (con fallbacks)
-r = reporte["resumen_ejecutivo"] if reporte else {}
-esg = reporte["esg_cbam"] if reporte else {}
-
-s3_pozos = r.get("pozos_piloto", 10)
-s3_ahorro_usd = r.get("ahorro_total_usd", 1620000)
-s3_mejora = r.get("mejora_promedio_pct", 16.5)
-s3_fee_usd = r.get("fee_mensual_usd", 21900)
-s3_skin = r.get("skin_promedio", 4.2)
-s3_co2 = esg.get("total_ton_co2_ahorradas", 833)
-
-s3_wc = r.get("wc_reduccion_pct", 18.4)
-s3_eur = r.get("eur_extra_bbls", 425000)
-s3_pb = r.get("payback_meses", 1.2)
-s3_lc_usd = r.get("lc_caida_usd", 2.15)
-
-# ══════════════════════════════════════════════════════
-# HTML / JS / CSS - MOTOR VISUAL
+# EL MOTOR DEL DASHBOARD INTERACTIVO (HTML + JS)
 # ══════════════════════════════════════════════════════
 HTML_BASE = r"""
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -76,250 +38,254 @@ HTML_BASE = r"""
   --mono: 'DM Mono', monospace; --head: 'Syne', sans-serif;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow-x: hidden; padding: 20px;}
 
-/* NAVEGACIÓN Y COMPONENTES */
-.screen { display: none; min-height: 100vh; width: 100vw; flex-direction: column; align-items: center; justify-content: center;}
-.screen.active { display: flex; }
-.btn-main { background: var(--green); color: #060B11; font-family: var(--head); font-weight: 800; font-size: 13px; letter-spacing: 2px; padding: 18px 45px; border-radius: 8px; border: none; cursor: pointer; transition: 0.3s; text-transform: uppercase;}
-.btn-main:hover { filter: brightness(1.2); box-shadow: 0 0 30px rgba(0,229,160,0.4); transform: translateY(-2px);}
-.btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; padding: 18px 40px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
-.btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
-
-/* SELECTOR DE POZOS */
-.config-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 30px; width: 100%; max-width: 900px;}
-.well-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; max-height: 250px; overflow-y: auto; padding-right: 10px; margin-top:20px;}
-.well-lbl { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; cursor: pointer; color: var(--text); background: #060B11; padding: 12px 15px; border-radius: 8px; border: 1px solid var(--border); transition: 0.2s;}
-.well-lbl:hover { border-color: var(--green); }
-input[type="checkbox"] { accent-color: var(--green); width: 16px; height: 16px; cursor: pointer; }
+/* CONTROLES SUPERIORES */
+.control-panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);}
+.ctrl-group label { display: block; font-family: var(--mono); font-size: 9px; color: var(--cyan); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;}
+.ctrl-group select, .ctrl-group input { width: 100%; background: #060B11; border: 1px solid var(--border); color: #fff; padding: 10px; border-radius: 6px; font-family: var(--mono); font-size: 12px; outline: none;}
+.ctrl-group select:focus, .ctrl-group input:focus { border-color: var(--green); }
 
 /* DASHBOARD LAYOUT */
-.dash-wrap { width: 100%; max-width: 1440px; padding: 40px; display: flex; flex-direction: column; gap: 24px; align-items: stretch; justify-content: flex-start;}
-.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; }
-.kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; border-top: 3px solid; transition: 0.3s; }
-.kpi-lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase;}
-.kpi-val { font-family: var(--mono); font-size: 34px; font-weight: 500; letter-spacing: -1px; margin-bottom: 4px; color:#fff;}
-.kpi-mxn { font-family: var(--mono); font-size: 12px; color: var(--soft); margin-bottom: 15px; letter-spacing: 1px; }
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px;}
+.kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; border-top: 3px solid var(--border); transition: 0.3s; }
+.kpi-lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase;}
+.kpi-val { font-family: var(--mono); font-size: 32px; font-weight: 500; letter-spacing: -1px; margin-bottom: 4px; color:#fff;}
+.kpi-mxn { font-family: var(--mono); font-size: 11px; color: var(--soft); margin-bottom: 10px;}
+.kpi-sub { font-family: var(--mono); font-size: 9px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 8px;}
 
-/* GRID PRINCIPAL (GRÁFICA + DATOS DUROS) */
-.main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; width: 100%; }
-.panel-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
-.panel-title { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 2px; margin-bottom: 20px; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 10px;}
+/* MAIN GRID (GRÁFICA Y DATOS DUROS) */
+.main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+.panel-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.panel-title { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 2px; margin-bottom: 15px; text-transform: uppercase; border-bottom: 1px solid var(--border); padding-bottom: 10px;}
 
-.metric-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
-.metric-lbl { color: var(--soft); font-size: 12px; font-family:var(--mono);}
-.metric-val { font-family: var(--mono); font-weight: 500; font-size: 13px; }
-
-.hard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+.hard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .hard-card { background: #091018; border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: center; }
-.hard-val { font-family: var(--mono); font-size: 20px; font-weight: 500; margin: 5px 0; }
-.hard-mxn { font-family: var(--mono); font-size: 10px; color: var(--muted); }
-.hard-lbl { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase;}
+.hard-val { font-family: var(--mono); font-size: 18px; font-weight: 500; margin: 5px 0; }
+.hard-lbl { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 1px;}
+.hard-mxn { font-size: 9px; color: var(--soft); font-family: var(--mono);}
 
-.term-box { background: #06090D; border: 1px solid var(--border); border-radius: 12px; padding: 32px; font-family: var(--mono); font-size: 13px; color: var(--green); line-height: 2; min-height: 220px; width: 600px;}
+.alert-box { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--red); border-radius: 8px; padding: 12px; margin-top: 15px; display: none;}
+.alert-title { color: var(--red); font-family: var(--mono); font-size: 11px; font-weight: bold; margin-bottom: 5px;}
+.alert-desc { color: #fff; font-size: 11px; font-family: var(--body);}
 </style>
 </head>
 <body>
 
-<div id="s-splash" class="screen active" style="background: radial-gradient(circle at center, #0D1A2A 0%, #060B11 100%);">
-  <h1 style="font-family:var(--head); font-size:90px; font-weight:800; color:#fff; letter-spacing:-3px; margin-bottom:5px;">FlowBio<span style="color:var(--green)">.</span></h1>
-  <p style="font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:4px; margin-bottom:40px;">SUBSURFACE INTELLIGENCE OS</p>
-  
-  <div class="config-card">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-            <h2 style="font-family:var(--head); color:#fff; font-size:20px;">Auditoría de Activos (S3 Data Lake)</h2>
-            <p style="font-family:var(--mono); color:var(--cyan); font-size:11px; letter-spacing:1px;">SELECCIONE LOS POZOS PARA LA PRUEBA DE CONCEPTO</p>
-        </div>
-        <button onclick="marcarTodos()" style="background:transparent; border:1px solid var(--border); color:var(--soft); padding:10px 20px; border-radius:6px; cursor:pointer; font-family:var(--mono); font-size:10px;">SELECCIONAR TODOS</button>
+<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 15px;">
+    <div>
+        <h1 style="font-family:var(--head); font-size:28px; color:#fff; margin-bottom:0;">FlowBio Command Center</h1>
+        <p style="font-family:var(--mono); font-size:10px; color:var(--cyan); letter-spacing:2px; margin-top:5px;">SIMULADOR INTERACTIVO · MODO VENTAS</p>
     </div>
-    
-    <div class="well-grid" id="well-container"></div>
-    
-    <div style="display:flex; justify-content:center; margin-top:30px;">
-        <button class="btn-main" onclick="runSim()">⚡ DESPLEGAR AGENTES EN SELECCIÓN</button>
+</div>
+
+<div class="control-panel">
+    <div class="ctrl-group">
+        <label>Químico Inyectado</label>
+        <select id="in-fluido" onchange="runSim()">
+            <option value="nacmc">Na-CMC FlowBio (Eco-Seguro)</option>
+            <option value="hpam">HPAM Tradicional (Sintético)</option>
+        </select>
     </div>
+    <div class="ctrl-group">
+        <label>Metalurgia (Tubing)</label>
+        <select id="in-tuberia" onchange="runSim()">
+            <option value="carbon">Acero al Carbono (Estándar)</option>
+            <option value="cra">Aleación CRA (Inoxidable)</option>
+        </select>
+    </div>
+    <div class="ctrl-group">
+        <label>Pozos en Piloto</label>
+        <input type="number" id="in-pozos" value="15" oninput="runSim()">
+    </div>
+    <div class="ctrl-group">
+        <label>Prod. Base (BPD/Pozo)</label>
+        <input type="number" id="in-bpd" value="350" oninput="runSim()">
+    </div>
+    <div class="ctrl-group">
+        <label>Success Fee ($/bbl)</label>
+        <input type="number" id="in-fee" value="5.0" step="0.5" oninput="runSim()">
+    </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card" id="card-ahorro" style="border-top-color:var(--green)">
+    <div class="kpi-lbl">AHORRO OPEX / AÑO</div>
+    <div class="kpi-val" style="color:var(--green)" id="ui-ahorro-usd">--</div>
+    <div class="kpi-mxn" id="ui-ahorro-mxn">--</div>
+    <div class="kpi-sub">Rentabilidad Neta Proyectada</div>
+  </div>
+  <div class="kpi-card" id="card-mejora" style="border-top-color:var(--blue)">
+    <div class="kpi-lbl">MEJORA VOLUMÉTRICA</div>
+    <div class="kpi-val" style="color:var(--blue)" id="ui-mejora">--</div>
+    <div class="kpi-mxn" style="visibility:hidden">.</div>
+    <div class="kpi-sub">Incremento sobre Producción Base</div>
+  </div>
+  <div class="kpi-card" style="border-top-color:var(--cyan)">
+    <div class="kpi-lbl">FEE MENSUAL FLOWBIO</div>
+    <div class="kpi-val" style="color:var(--cyan)" id="ui-fee-usd">--</div>
+    <div class="kpi-mxn" id="ui-fee-mxn">--</div>
+    <div class="kpi-sub">Facturación a Riesgo ($0 si falla)</div>
+  </div>
+  <div class="kpi-card" id="card-esg" style="border-top-color:var(--amber)">
+    <div class="kpi-lbl">IMPACTO ESG & TOXICIDAD</div>
+    <div class="kpi-val" style="color:var(--amber)" id="ui-co2">--</div>
+    <div class="kpi-mxn" id="ui-toxic">--</div>
+    <div class="kpi-sub">Certificados y Seguridad Ambiental</div>
   </div>
 </div>
 
-<div id="s-terminal" class="screen">
-  <div class="term-box" id="term-log"></div>
-</div>
+<div class="main-grid">
+  <div class="panel-card">
+    <div class="panel-title">COMPORTAMIENTO DE DECLINACIÓN VS INYECCIÓN</div>
+    <div id="chart-div" style="height:320px;"></div>
+  </div>
 
-<div id="s-dash" class="screen">
-  <div class="dash-wrap">
-    
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; padding-bottom: 10px;">
-        <div>
-            <h1 style="font-family:var(--head); font-size:28px; color:#fff;">Auditoría de Recuperación FlowBio</h1>
-            <p style="font-family:var(--mono); font-size:10px; color:var(--cyan); letter-spacing:2px; margin-top:5px;">MODELO PIML · TIPO DE CAMBIO: $__TC_MXN__ MXN/USD</p>
-        </div>
-        <button onclick="go('s-splash')" class="btn-ghost" style="padding:10px 20px; font-size:10px;">← RE-CONFIGURAR PILOTO</button>
-    </div>
-
-    <div class="kpi-grid">
-      <div class="kpi-card" style="border-top-color:var(--green)">
-        <div class="kpi-lbl">AHORRO OPEX / AÑO</div>
-        <div class="kpi-val" style="color:var(--green)" id="ui-ahorro-usd">--</div>
-        <div class="kpi-mxn" id="ui-ahorro-mxn">--</div>
-        <div class="kpi-sub" style="border-top:1px solid var(--border); padding-top:10px;">Impacto Financiero Calculado</div>
-      </div>
-      <div class="kpi-card" style="border-top-color:var(--blue)">
-        <div class="kpi-lbl">MEJORA PROMEDIO</div>
-        <div class="kpi-val" style="color:var(--blue)" id="ui-mejora">--</div>
-        <div class="kpi-mxn" style="color:var(--bg)">.</div> <div class="kpi-sub" style="border-top:1px solid var(--border); padding-top:10px;">Incremento Producción Base</div>
-      </div>
-      <div class="kpi-card" style="border-top-color:var(--cyan)">
-        <div class="kpi-lbl">SUCCESS FEE MENSUAL</div>
-        <div class="kpi-val" style="color:var(--cyan)" id="ui-fee-usd">--</div>
-        <div class="kpi-mxn" id="ui-fee-mxn">--</div>
-        <div class="kpi-sub" style="border-top:1px solid var(--border); padding-top:10px;">Modelo de Riesgo Compartido</div>
-      </div>
-      <div class="kpi-card" style="border-top-color:var(--amber)">
-        <div class="kpi-lbl">ESG: CO2 EVITADO</div>
-        <div class="kpi-val" style="color:var(--amber)"><span id="ui-co2">--</span> <span style="font-size:20px;">Tons</span></div>
-        <div class="kpi-mxn" style="color:var(--bg)">.</div> <div class="kpi-sub" style="border-top:1px solid var(--border); padding-top:10px;">Certificados Carbono (Na-CMC)</div>
-      </div>
-    </div>
-
-    <div class="main-grid">
-      <div class="panel-card">
-        <div class="panel-title">PROYECCIÓN DE DECLINACIÓN Y RECUPERACIÓN (POZOS SELECCIONADOS)</div>
-        <div id="chart-div" style="height:350px;"></div>
-      </div>
-
-      <div style="display:flex; flex-direction:column; gap:20px;">
-          <div class="panel-card" style="padding:15px 24px;">
-            <div class="panel-title" style="margin-bottom:10px;">DIAGNÓSTICO DEL SISTEMA</div>
-            <div class="metric-row"><span class="metric-lbl">Pozos en Piloto</span><span class="metric-val" style="color:var(--green)" id="ui-pozos">--</span></div>
-            <div class="metric-row"><span class="metric-lbl">Factor Skin (S) Promedio</span><span class="metric-val" style="color:var(--red)">S = <span id="ui-skin">--</span></span></div>
-            <div class="metric-row" style="border:none; padding-bottom:0;"><span class="metric-lbl">Origen de Datos</span><span class="metric-val" style="color:var(--cyan)">AWS S3</span></div>
-          </div>
-          
-          <div class="panel-card" style="flex-grow:1;">
-            <div class="panel-title">MÉTRICAS DURAS DE INGENIERÍA</div>
-            <div class="hard-grid">
-                <div class="hard-card">
-                    <div class="hard-lbl">RESERVAS EUR (5 AÑOS)</div>
-                    <div class="hard-val" style="color:var(--cyan)" id="ui-eur">--</div>
-                    <div class="hard-mxn">Barriles Extra</div>
-                </div>
-                <div class="hard-card">
-                    <div class="hard-lbl">CAÍDA LIFTING COST</div>
-                    <div class="hard-val" style="color:var(--blue)" id="ui-lc-usd">--</div>
-                    <div class="hard-mxn" id="ui-lc-mxn">--</div>
-                </div>
-                <div class="hard-card">
-                    <div class="hard-lbl">TIEMPO PAYBACK</div>
-                    <div class="hard-val" style="color:var(--green)" id="ui-pb">--</div>
-                    <div class="hard-mxn">Meses Operativos</div>
-                </div>
-                <div class="hard-card">
-                    <div class="hard-lbl">REDUCCIÓN WATER CUT</div>
-                    <div class="hard-val" style="color:var(--amber)" id="ui-wc">--</div>
-                    <div class="hard-mxn">Eficiencia de Barrido</div>
-                </div>
+  <div style="display:flex; flex-direction:column; gap:15px;">
+      <div class="panel-card" style="flex-grow:1;">
+        <div class="panel-title">MÉTRICAS DURAS DE INGENIERÍA</div>
+        <div class="hard-grid">
+            <div class="hard-card">
+                <div class="hard-lbl">RESERVAS EUR (5A)</div>
+                <div class="hard-val" style="color:var(--cyan)" id="ui-eur">--</div>
+                <div class="hard-mxn">Barriles Extra</div>
             </div>
-          </div>
+            <div class="hard-card" id="card-corrosion">
+                <div class="hard-lbl">TASA CORROSIÓN (MPY)</div>
+                <div class="hard-val" style="color:var(--green)" id="ui-mpy">--</div>
+                <div class="hard-mxn" id="ui-mpy-sub">Impacto en Tubing</div>
+            </div>
+            <div class="hard-card">
+                <div class="hard-lbl">TIEMPO PAYBACK</div>
+                <div class="hard-val" style="color:var(--green)" id="ui-pb">--</div>
+                <div class="hard-mxn">Meses Operativos</div>
+            </div>
+            <div class="hard-card">
+                <div class="hard-lbl">REDUCCIÓN WATER CUT</div>
+                <div class="hard-val" style="color:var(--blue)" id="ui-wc">--</div>
+                <div class="hard-mxn">Eficiencia Barrido</div>
+            </div>
+        </div>
+        
+        <div class="alert-box" id="ui-alert">
+            <div class="alert-title">⚠️ RIESGO CRÍTICO DE CORROSIÓN (PITTING)</div>
+            <div class="alert-desc" id="ui-alert-text">La degradación del HPAM libera H2S, atacando el Acero al Carbono. Costo de mitigación penaliza el OPEX.</div>
+        </div>
       </div>
-    </div>
-
   </div>
 </div>
 
 <script>
-// DATOS IMPORTADOS DE PYTHON (JSON Groq + Variables Globales)
-const S3_DATA = {
-    pozos: parseInt("__S3_POZOS__"), ahorro: parseFloat("__S3_AHORRO__"), mejora: parseFloat("__S3_MEJORA__"),
-    fee: parseFloat("__S3_FEE__"), skin: parseFloat("__S3_SKIN__"), co2: parseFloat("__S3_CO2__"), 
-    wc: parseFloat("__S3_WC__"), eur: parseFloat("__S3_EUR__"), pb: parseFloat("__S3_PB__"), lc: parseFloat("__S3_LC__")
-};
-
-const TC = parseFloat("__TC_MXN__");
+const TC_MXN = 20.0;
 
 function formatUsd(n) { return n >= 1e6 ? '$'+(n/1e6).toFixed(2)+'M' : (n >= 1e3 ? '$'+(n/1e3).toFixed(1)+'K' : '$'+Math.round(n).toLocaleString()); }
-function formatMxn(n) { 
-    let mxn = n * TC;
-    return mxn >= 1e6 ? '≈ $'+(mxn/1e6).toFixed(2)+'M MXN' : '≈ $'+Math.round(mxn).toLocaleString()+' MXN'; 
-}
+function formatMxn(n) { let mxn = n * TC_MXN; return mxn >= 1e6 ? '≈ $'+(mxn/1e6).toFixed(2)+'M MXN' : '≈ $'+Math.round(mxn).toLocaleString()+' MXN'; }
 function formatNum(n) { return n >= 1e6 ? (n/1e6).toFixed(2)+'M' : (n >= 1e3 ? (n/1e3).toFixed(1)+'K' : Math.round(n).toLocaleString()); }
 
-function go(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function runSim() {
+    // 1. Leer Controles
+    const fluido = document.getElementById('in-fluido').value;
+    const tuberia = document.getElementById('in-tuberia').value;
+    const pozos = parseInt(document.getElementById('in-pozos').value) || 0;
+    const bpd = parseFloat(document.getElementById('in-bpd').value) || 0;
+    const fee = parseFloat(document.getElementById('in-fee').value) || 0;
 
-// Poblar Casillas de Pozos
-const container = document.getElementById('well-container');
-for(let i=1; i<=S3_DATA.pozos; i++) {
-    const wellName = `UKCS-P${i.toString().padStart(3, '0')}`;
-    container.innerHTML += `<label class="well-lbl"><input type="checkbox" value="${wellName}" class="well-chk" checked> ${wellName}</label>`;
-}
+    // 2. Motor Físico B2B (Las Reglas de Negocio)
+    let mejora = 0, corrosion_mpy = 0, costo_mitigacion_mensual = 0;
+    let co2_tons = 0, toxic_msg = "", pb_meses = 0, wc_red = 0;
+    let color_esg = "var(--green)", color_mpy = "var(--green)", color_ahorro = "var(--green)";
 
-function marcarTodos() {
-    let checks = document.querySelectorAll('.well-chk');
-    let allChecked = Array.from(checks).every(c => c.checked);
-    checks.forEach(cb => cb.checked = !allChecked);
-}
+    const prod_base_total = pozos * bpd;
 
-async function runSim() {
-  const selected = document.querySelectorAll('.well-chk:checked').length;
-  if(selected === 0) { alert("⚠️ Seleccione al menos 1 pozo para iniciar la simulación."); return; }
+    if(fluido === 'nacmc') {
+        mejora = 0.165; // 16.5%
+        co2_tons = (prod_base_total * mejora) * 1.2; // Ahorro masivo CO2
+        toxic_msg = "Biodegradable (Cero Toxicidad)";
+        pb_meses = 1.2;
+        wc_red = 18.5;
+        
+        // Na-CMC no corroe, no importa la tubería
+        if(tuberia === 'carbon') { corrosion_mpy = 0.8; } else { corrosion_mpy = 0.1; }
+        costo_mitigacion_mensual = 0;
+        
+    } else {
+        // HPAM Tradicional
+        mejora = 0.112; // 11.2% (Menos eficiente)
+        co2_tons = 0; // Contaminante
+        toxic_msg = "Emisor Tóxico (H2S / NH3)";
+        pb_meses = 3.8;
+        wc_red = 9.2;
+        color_esg = "var(--red)";
 
-  go('s-terminal');
-  const box = document.getElementById('term-log'); box.innerHTML = '';
-  const logs = [ 
-      `> Inicializando Audit Trail para ${selected} pozos seleccionados...`, 
-      `> Extrayendo datos geológicos de AWS S3...`, 
-      `> Resolviendo tensores de permeabilidad PIML...`, 
-      `> Calculando conversiones financieras (Tipo de Cambio: $${TC} MXN)...`,
-      `> ✓ Despliegue de métricas listo.` 
-  ];
-  
-  for (let l of logs) { box.innerHTML += `<div>${l}</div>`; await new Promise(r => setTimeout(r, 500)); }
-  await new Promise(r => setTimeout(r, 400));
-  
-  // MAGIA MATEMÁTICA INTERACTIVA (Regla de 3 basada en la selección)
-  const ratio = selected / S3_DATA.pozos;
-  const curr_ahorro = S3_DATA.ahorro * ratio;
-  const curr_fee = S3_DATA.fee * ratio;
-  const curr_co2 = S3_DATA.co2 * ratio;
-  const curr_eur = S3_DATA.eur * ratio;
+        // Impacto severo en tubería
+        if(tuberia === 'carbon') {
+            corrosion_mpy = 25.0; // Pitting destructivo
+            costo_mitigacion_mensual = pozos * 8000; // $8k USD al mes por pozo en inhibidores
+            color_mpy = "var(--red)";
+        } else {
+            corrosion_mpy = 5.0; // CRA resiste mejor, pero hay costo
+            costo_mitigacion_mensual = pozos * 2000;
+            color_mpy = "var(--amber)";
+        }
+    }
 
-  // Poblar UI Financiera (Doble Moneda)
-  document.getElementById('ui-ahorro-usd').innerText = formatUsd(curr_ahorro);
-  document.getElementById('ui-ahorro-mxn').innerText = formatMxn(curr_ahorro);
-  
-  document.getElementById('ui-fee-usd').innerText = formatUsd(curr_fee);
-  document.getElementById('ui-fee-mxn').innerText = formatMxn(curr_fee);
-  
-  document.getElementById('ui-mejora').innerText = `+${S3_DATA.mejora}%`;
-  document.getElementById('ui-co2').innerText = Math.round(curr_co2).toLocaleString();
-  
-  // Poblar UI Ingeniería
-  document.getElementById('ui-pozos').innerText = selected;
-  document.getElementById('ui-skin').innerText = S3_DATA.skin.toFixed(1);
-  
-  // Datos Duros
-  document.getElementById('ui-eur').innerText = formatNum(curr_eur);
-  document.getElementById('ui-wc').innerText = `-${S3_DATA.wc}%`;
-  document.getElementById('ui-pb').innerText = `${S3_DATA.pb} Meses`;
-  
-  // Lifting Cost en Doble Moneda
-  document.getElementById('ui-lc-usd').innerText = `-$${S3_DATA.lc.toFixed(2)}`;
-  document.getElementById('ui-lc-mxn').innerText = `≈ -$${(S3_DATA.lc * TC).toFixed(2)} MXN`;
+    // 3. Matemáticas Financieras
+    const extra_bpd = prod_base_total * mejora;
+    const revenue_anual = extra_bpd * 365 * 75.0; // $75 usd/bbl
+    const fee_mensual = extra_bpd * 30 * fee;
+    
+    // Ahorro OPEX = (Ganancia del crudo extra) - (Lo que pagas de Fee + Mitigación de Corrosión)
+    const opex_ahorro_anual = (extra_bpd * 365 * 18.5) - (costo_mitigacion_mensual * 12);
+    const eur = extra_bpd * 365 * 5 * 0.8;
 
-  // Gráfica
-  const base_bpd = selected * 350; 
-  drawChart(base_bpd, S3_DATA.mejora / 100);
-  go('s-dash');
-}
+    if(opex_ahorro_anual < 0) color_ahorro = "var(--red)";
 
-function drawChart(baseProd, mejora) {
+    // 4. Actualizar DOM (UI)
+    document.getElementById('ui-ahorro-usd').innerText = formatUsd(opex_ahorro_anual);
+    document.getElementById('ui-ahorro-usd').style.color = color_ahorro;
+    document.getElementById('ui-ahorro-mxn').innerText = formatMxn(opex_ahorro_anual);
+    document.getElementById('card-ahorro').style.borderTopColor = color_ahorro;
+
+    document.getElementById('ui-mejora').innerText = `+${(mejora*100).toFixed(1)}%`;
+    
+    document.getElementById('ui-fee-usd').innerText = formatUsd(fee_mensual);
+    document.getElementById('ui-fee-mxn').innerText = formatMxn(fee_mensual);
+
+    document.getElementById('ui-co2').innerText = formatNum(co2_tons);
+    document.getElementById('ui-toxic').innerText = toxic_msg;
+    document.getElementById('ui-co2').style.color = color_esg;
+    document.getElementById('card-esg').style.borderTopColor = color_esg;
+
+    document.getElementById('ui-eur').innerText = formatNum(eur);
+    document.getElementById('ui-wc').innerText = `-${wc_red.toFixed(1)}%`;
+    document.getElementById('ui-pb').innerText = `${pb_meses} Meses`;
+    
+    document.getElementById('ui-mpy').innerText = `${corrosion_mpy.toFixed(1)} mpy`;
+    document.getElementById('ui-mpy').style.color = color_mpy;
+    
+    // Mostrar/Ocultar Alerta de Corrosión
+    const alertBox = document.getElementById('ui-alert');
+    const alertText = document.getElementById('ui-alert-text');
+    if(fluido === 'hpam' && tuberia === 'carbon') {
+        alertBox.style.display = "block";
+        alertText.innerText = `La degradación del HPAM libera H2S, atacando el Acero al Carbono. Costo de inhibidores de corrosión penaliza el OPEX en -$${formatUsd(costo_mitigacion_mensual*12)} al año.`;
+    } else if (fluido === 'hpam' && tuberia === 'cra') {
+        alertBox.style.display = "block";
+        alertText.innerText = `Tubería CRA protege contra Pitting Severo, pero el HPAM requiere mantenimiento químico extra penalizando el OPEX en -$${formatUsd(costo_mitigacion_mensual*12)} al año.`;
+    } else {
+        alertBox.style.display = "none";
+    }
+
+    // 5. Graficar Plotly
     const x = Array.from({length:40}, (_,i)=>i);
-    const y1 = x.map(i => baseProd * Math.exp(-0.04*i));
-    const y2 = x.map(i => i<5 ? y1[i] : y1[i] + (baseProd * mejora * Math.exp(-0.012*(i-5))));
+    const y1 = x.map(i => prod_base_total * Math.exp(-0.06*i));
+    const y2 = x.map(i => i<5 ? y1[i] : y1[i] + (prod_base_total * mejora * Math.exp(-0.015*(i-5))));
+    const fillCol = fluido === 'nacmc' ? 'rgba(0,229,160,0.15)' : 'rgba(59,130,246,0.15)';
+    const lineCol = fluido === 'nacmc' ? '#00E5A0' : '#3B82F6';
 
     Plotly.newPlot('chart-div', [
         {x:x, y:y1, name:'Baseline', type:'scatter', line:{color:'#EF4444',dash:'dot',width:2}, hoverinfo:'none'},
-        {x:x, y:y2, name:'FlowBio', type:'scatter', line:{color:'#00E5A0',width:3}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.15)'}
+        {x:x, y:y2, name:'Proyección EOR', type:'scatter', line:{color:lineCol,width:3}, fill:'tonexty', fillcolor:fillCol}
     ], {
         paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', margin:{l:40,r:10,t:10,b:25}, showlegend:false,
         font:{family:'DM Mono',color:'#64748B',size:10}, 
@@ -327,17 +293,16 @@ function drawChart(baseProd, mejora) {
         yaxis:{gridcolor:'#1A2A3A', showline:false, zeroline:false}
     }, {responsive:true, displayModeBar:false});
 }
+
+// Ejecutar al cargar la página
+window.onload = runSim;
 </script>
 </body>
 </html>
 """
 
-# Reemplazo Seguro
-html_final = HTML_BASE.replace("__S3_POZOS__", str(s3_pozos)).replace("__S3_AHORRO__", str(s3_ahorro_usd))
-html_final = html_final.replace("__S3_MEJORA__", str(s3_mejora)).replace("__S3_FEE__", str(s3_fee_usd))
-html_final = html_final.replace("__S3_SKIN__", str(s3_skin)).replace("__S3_CO2__", str(s3_co2))
-html_final = html_final.replace("__S3_WC__", str(s3_wc)).replace("__S3_EUR__", str(s3_eur))
-html_final = html_final.replace("__S3_PB__", str(s3_pb)).replace("__S3_LC__", str(s3_lc_usd))
-html_final = html_final.replace("__TC_MXN__", str(USD_TO_MXN))
+# Renderizar en Streamlit
+b64_html = base64.b64encode(HTML_BASE.encode()).decode()
+iframe_html = f'<iframe src="data:text/html;base64,{b64_html}" width="100%" height="950px" style="border:none; border-radius:12px;"></iframe>'
 
-components.html(html_final, height=1050, scrolling=True)
+st.components.v1.html(HTML_BASE, height=950, scrolling=True)
