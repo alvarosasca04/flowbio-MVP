@@ -3,9 +3,8 @@ pandas
 numpy
 plotly
 boto3
-pillow
+Pillow
 python-dotenv
 langchain-groq
 fpdf
 requests
-io
