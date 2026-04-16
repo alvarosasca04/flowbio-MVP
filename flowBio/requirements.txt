@@ -6,4 +6,3 @@ boto3
 pillow
 python-dotenv
 langchain-groq
-crewai
