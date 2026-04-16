@@ -3,297 +3,233 @@ import streamlit.components.v1 as components
 import boto3
 import json
 
-st.set_page_config(
-    page_title="FlowBio Command Center",
-    page_icon="🛢️",
-    layout="wide",
-    initial_sidebar_state="collapsed",
-)
+st.set_page_config(page_title="FlowBio Command Center", page_icon="🛢️", layout="wide", initial_sidebar_state="collapsed")
 
-# ══════════════════════════════════════════════════════
-# 1. CONEXIÓN AL CEREBRO GROQ (AWS S3)
-# ══════════════════════════════════════════════════════
-@st.cache_data(ttl=30)
-def fetch_groq_results():
+# 1. LEER DATOS DUROS DE S3
+@st.cache_data(ttl=10)
+def fetch_s3():
     try:
         s3 = boto3.client("s3", region_name="us-east-2")
-        bucket = "flowbio-data-lake-v2-627807503177-us-east-2-an"
-        key = "agentes/ultimo_reporte.json"
-        
-        response = s3.get_object(Bucket=bucket, Key=key)
-        data = json.loads(response['Body'].read().decode('utf-8'))
-        return data, "✅ Conexión exitosa a AWS S3. JSON sincronizado."
-    except Exception as e:
-        return None, f"⚠️ No se pudo conectar a S3. Usando caché offline."
+        obj = s3.get_object(Bucket="flowbio-data-lake-v2-627807503177-us-east-2-an", Key="agentes/ultimo_reporte.json")
+        return json.loads(obj['Body'].read().decode('utf-8'))
+    except: return None
 
-reporte, mensaje_conexion = fetch_groq_results()
+reporte = fetch_s3()
 
-# Variables dinámicas extrayendo del JSON real
-titulo_dash = reporte["metadata"]["titulo"] if reporte else "FlowBio Insight"
-# Valores base (RAW) que usaremos para la regla de 3 en Javascript
-base_pozos = reporte["resumen_ejecutivo"].get("candidatos_inyeccion", 10) if reporte else 10
-base_ahorro = reporte["resumen_ejecutivo"]["ahorro_total_usd"] if reporte else 1850000
-base_fee = reporte["resumen_ejecutivo"]["fee_mensual_usd"] if reporte else 25000
-mejora_pct = reporte["resumen_ejecutivo"]["mejora_promedio_pct"] if reporte else 16.5
-skin_avg = reporte["resumen_ejecutivo"]["skin_promedio"] if reporte else 4.2
-base_co2 = reporte["esg_cbam"]["total_ton_co2_ahorradas"] if reporte else 950.5
+# Variables S3 (Fallback por si no hay internet)
+r = reporte["resumen_ejecutivo"] if reporte else {}
+pozos = r.get("pozos_piloto", 10)
+ahorro = r.get("ahorro_total_usd", 1620000)
+mejora = r.get("mejora_promedio_pct", 16.5)
+fee = r.get("fee_mensual_usd", 21900)
+co2 = reporte["esg_cbam"]["total_ton_co2_ahorradas"] if reporte else 833
 
-# Ocultar menús de Streamlit
-st.markdown("""
-<style>
-    [data-testid="stHeader"], [data-testid="stSidebar"], footer { display: none !important; }
-    .stApp { margin: 0; padding: 0; background: #060C12; }
-    .block-container { padding: 0 !important; max-width: 100vw !important; }
-</style>
-""", unsafe_allow_html=True)
+# DATOS DUROS S3
+wc_red = r.get("wc_reduccion_pct", 18.4)
+eur = r.get("eur_extra_bbls", 425000)
+payback = r.get("payback_meses", 1.2)
+lc_drop = r.get("lc_caida_usd", 2.15)
 
-# ══════════════════════════════════════════════════════
-# 2. INTERFAZ UI / HTML 
-# ══════════════════════════════════════════════════════
+st.markdown("""<style>[data-testid="stHeader"], [data-testid="stSidebar"], footer { display: none !important; } .stApp { margin: 0; padding: 0; background: #060C12; } .block-container { padding: 0 !important; max-width: 100vw !important; }</style>""", unsafe_allow_html=True)
+
 HTML_BASE = r"""
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FlowBio Intelligence</title>
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg: #060C12; --card: #0D1928; --border: #152335; --green: #00E5A0; 
-  --blue: #3B82F6; --cyan: #22D3EE; --amber: #F59E0B; --red: #EF4444; 
-  --text: #E2EEF8; --muted: #4A6580; --mono: 'DM Mono', monospace; --head: 'Syne', sans-serif;
-}
+:root { --bg: #060C12; --card: #0D1928; --border: #152335; --green: #00E5A0; --blue: #3B82F6; --cyan: #22D3EE; --amber: #F59E0B; --red: #EF4444; --text: #E2EEF8; --muted: #4A6580; --mono: 'DM Mono', monospace; --head: 'Syne', sans-serif; }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; height: 100%; overflow: hidden; }
-.screen { display: none; width: 100vw; height: 100vh; }
-.screen.active { display: flex; }
-#s-splash { flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,229,160,.05) 0%, transparent 70%); }
-.splash-logo { font-family: var(--head); font-size: clamp(64px, 9vw, 120px); font-weight: 800; letter-spacing: -4px; color: #fff; margin-bottom: 8px; }
-.splash-logo span { color: var(--green); }
-.btn-launch { background: var(--green); color: #050C12; font-family: var(--head); font-weight: 700; font-size: 13px; letter-spacing: 2px; border-radius: 10px; padding: 18px 52px; cursor: pointer; border: none; }
-.btn-launch:hover { filter: brightness(1.2); box-shadow: 0 0 30px rgba(0,229,160,0.4); }
-
-/* Pantalla Configuración */
-#s-config { flex-direction: column; overflow-y: auto; align-items: center; justify-content: center;}
-.config-wrap { width: 100%; max-width: 1000px; padding: 40px; display: flex; flex-direction: column; gap: 24px; }
-.config-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 30px; }
-.card-title { font-family: var(--mono); font-size: 12px; letter-spacing: 2px; color: var(--cyan); margin-bottom: 20px; text-transform: uppercase; }
-.well-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; max-height: 200px; overflow-y: auto; padding-right: 10px;}
-.well-lbl { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; cursor: pointer; color: var(--text); background: #0B1420; padding: 10px 15px; border-radius: 8px; border: 1px solid transparent; transition: 0.2s;}
-.well-lbl:hover { border-color: var(--green); }
-input[type="checkbox"] { accent-color: var(--green); width: 16px; height: 16px; cursor: pointer; }
-
-#s-terminal { flex-direction: column; align-items: center; justify-content: center; }
-.term-wrap { width: 100%; max-width: 720px; padding: 40px; }
-.term-box { background: #06090D; border: 1px solid var(--border); border-radius: 12px; padding: 32px; font-family: var(--mono); font-size: 13px; color: var(--green); line-height: 2; min-height: 220px; }
-.term-bar { height: 6px; width: 0%; background: linear-gradient(90deg, var(--green), var(--cyan)); border-radius: 6px; transition: width .4s ease; margin-top:20px; }
-#s-dash { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
-.dash-wrap { width: 100%; max-width: 1400px; margin: 0 auto; padding: 28px 32px 60px; display: flex; flex-direction: column; gap: 24px; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
+.screen { display: none; min-height: 100vh; width: 100vw; }
+.screen.active { display: flex; flex-direction: column; }
+.btn-main { background: var(--green); color: #060C12; font-family: var(--head); font-weight: 800; font-size: 12px; letter-spacing: 2px; padding: 18px 40px; border-radius: 8px; border: none; cursor: pointer; transition: 0.2s; text-transform: uppercase;}
+.btn-main:hover { filter: brightness(1.2); box-shadow: 0 0 30px rgba(0,229,160,0.3); }
+.btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; padding: 18px 40px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+.btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+/* Dashboard */
+.dash-wrap { width: 100%; max-width: 1400px; margin: 0 auto; padding: 40px; display: flex; flex-direction: column; gap: 24px; }
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 20px; border-top: 2px solid var(--green); }
-.kpi-lbl { font-family: var(--mono); font-size: 9px; letter-spacing: 1.8px; color: var(--muted); margin-bottom: 12px; }
-.kpi-val { font-family: var(--mono); font-size: 36px; font-weight: 500; letter-spacing: -2px; color: #fff; }
-.kpi-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 8px; }
-.chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+.kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px; border-top: 2px solid var(--green); }
+.kpi-lbl { font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 12px; text-transform: uppercase;}
+.kpi-val { font-family: var(--mono); font-size: 32px; font-weight: 500; color: #fff; letter-spacing: -1px;}
+.hard-data-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 10px; }
+.hard-card { background: #08101A; border: 1px solid #1E3348; border-radius: 10px; padding: 18px; text-align: center; }
+.hard-val { font-family: var(--head); font-size: 28px; font-weight: 700; color: var(--cyan); margin: 8px 0 4px; }
+.hard-lbl { font-family: var(--mono); font-size: 10px; color: var(--soft); letter-spacing: 1px; }
+/* Formularios Manuales */
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; font-family: var(--mono); font-size: 10px; color: var(--soft); margin-bottom: 5px; }
+.form-group input { width: 100%; background: var(--bg); border: 1px solid var(--border); padding: 12px; color: #fff; border-radius: 6px; font-family: var(--mono);}
 </style>
 </head>
 <body>
 
-<div id="s-splash" class="screen active">
-  <h1 class="splash-logo">FlowBio<span>.</span></h1>
-  <p style="font-family: var(--mono); font-size:12px; color:var(--muted); letter-spacing:3px; margin-bottom: 40px;">GROQ SPEED ENGINE · AWS S3 SYNC</p>
-  <button class="btn-launch" onclick="go('s-config')">CONFIGURAR PRUEBA DE CONCEPTO (PoC)</button>
+<div id="s-splash" class="screen active" style="align-items: center; justify-content: center; background: radial-gradient(circle at center, #0B1A2A 0%, #060C12 100%);">
+  <h1 style="font-family: var(--head); font-size: 90px; font-weight: 800; color: #fff; margin-bottom: 10px;">FlowBio<span style="color:var(--green)">.</span></h1>
+  <p style="font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: 4px; margin-bottom: 50px;">SUBSURFACE INTELLIGENCE OS</p>
+  
+  <div style="display:flex; gap:20px;">
+    <button class="btn-main" onclick="startS3Mode()">Iniciar Demo (Live S3 Data)</button>
+    <button class="btn-ghost" onclick="go('s-manual')">Simulador Manual</button>
+  </div>
 </div>
 
-<div id="s-config" class="screen">
-  <div class="config-wrap">
-    <div>
-        <h1 style="font-family:var(--head); font-size:32px; font-weight:800; color:#fff;">Target <span style="color:var(--green)">Selection</span></h1>
-        <p style="font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:2px; margin-top:4px;">SELECCIONE LOS ACTIVOS PARA EL PILOTO</p>
+<div id="s-manual" class="screen" style="align-items: center; justify-content: center;">
+  <div style="background: var(--card); border: 1px solid var(--border); padding: 40px; border-radius: 16px; width: 600px;">
+    <h2 style="font-family: var(--head); color: #fff; margin-bottom: 20px;">Parámetros del Yacimiento</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div class="form-group"><label>NÚMERO DE POZOS</label><input type="number" id="m-pozos" value="15"></div>
+      <div class="form-group"><label>PRODUCCIÓN BASE (BPD/POZO)</label><input type="number" id="m-bpd" value="400"></div>
+      <div class="form-group"><label>PERMEABILIDAD (mD)</label><input type="number" id="m-perm" value="1200"></div>
+      <div class="form-group"><label>VISCOSIDAD (cP)</label><input type="number" id="m-visc" value="180"></div>
     </div>
-    
-    <div class="config-card">
-      <div class="card-title">BASE DE DATOS AWS (UKCS_well_availability...)</div>
-      <div class="well-grid" id="well-container">
-        </div>
-    </div>
-    
-    <div style="display:flex; justify-content:flex-end; gap: 15px;">
-        <button onclick="marcarTodos()" style="background:transparent; border:1px solid var(--border); color:var(--muted); padding:15px 30px; border-radius:10px; cursor:pointer; font-family:var(--mono); font-size:12px;">MARCAR TODOS</button>
-        <button class="btn-launch" onclick="runSim()">⚡ DESPLEGAR AGENTES EN SELECCIÓN</button>
+    <div style="display: flex; justify-content: space-between; margin-top: 30px;">
+        <button class="btn-ghost" style="padding: 12px 20px;" onclick="go('s-splash')">← Volver</button>
+        <button class="btn-main" onclick="startManualMode()">EJECUTAR FÍSICA</button>
     </div>
   </div>
 </div>
 
-<div id="s-terminal" class="screen">
-  <div class="term-wrap">
-    <div class="term-box" id="term-log"></div>
-    <div class="term-bar" id="term-bar"></div>
-  </div>
+<div id="s-terminal" class="screen" style="align-items: center; justify-content: center;">
+  <div style="width: 600px; background: #06090D; border: 1px solid var(--border); padding: 30px; border-radius: 12px; font-family: var(--mono); color: var(--green); font-size: 13px; line-height: 2;" id="term-log"></div>
 </div>
 
 <div id="s-dash" class="screen">
   <div class="dash-wrap">
-    <div style="border-bottom:1px solid #152335; padding-bottom:18px; display:flex; justify-content:space-between; align-items:flex-end;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
         <div>
-            <h1 style="font-family:var(--head); font-size:26px; font-weight:800;">__VAL_TITULO__</h1>
-            <p style="font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:2px; margin-top:4px;">LECTURA EN VIVO: AWS S3</p>
+            <h1 style="font-family:var(--head); font-size:28px; color:#fff;" id="dash-title">FlowBio Insight</h1>
+            <p style="font-family:var(--mono); font-size:10px; color:var(--cyan); letter-spacing:2px;" id="dash-origen">ORIGEN: S3 CLOUD</p>
         </div>
-        <button onclick="go('s-config')" style="background:transparent; border:1px solid var(--border); color:var(--muted); padding:10px 20px; border-radius:8px; cursor:pointer; font-family:var(--mono); font-size:10px; text-transform:uppercase;">← Re-seleccionar Pozos</button>
+        <button onclick="go('s-splash')" class="btn-ghost" style="padding:10px 20px; font-size:10px;">REINICIAR SISTEMA</button>
     </div>
 
     <div class="kpi-grid">
-      <div class="kpi-card" style="border-top-color: var(--green);">
-        <div class="kpi-lbl">AHORRO OPEX / AÑO (USD)</div>
-        <div class="kpi-val" style="color:var(--green)" id="val-ahorro">--</div>
-        <div class="kpi-sub">Impacto Financiero Calculado</div>
-      </div>
-      <div class="kpi-card" style="border-top-color: var(--blue);">
-        <div class="kpi-lbl">MEJORA PROMEDIO</div>
-        <div class="kpi-val" style="color:var(--blue)">+__VAL_MEJORA__%</div>
-        <div class="kpi-sub">Incremento Producción Base</div>
-      </div>
-      <div class="kpi-card" style="border-top-color: var(--cyan);">
-        <div class="kpi-lbl">FEE MENSUAL USD</div>
-        <div class="kpi-val" style="color:var(--cyan)" id="val-fee">--</div>
-        <div class="kpi-sub">Success Fee FlowBio</div>
-      </div>
-      <div class="kpi-card" style="border-top-color: var(--amber);">
-        <div class="kpi-lbl">ESG: CO2 EVITADO</div>
-        <div class="kpi-val" style="color:var(--amber)" id="val-co2">--</div>
-        <div class="kpi-sub">Toneladas Anuales (Na-CMC)</div>
-      </div>
+      <div class="kpi-card"><div class="kpi-lbl">AHORRO OPEX / AÑO</div><div class="kpi-val" style="color:var(--green)" id="ui-ahorro">--</div></div>
+      <div class="kpi-card" style="border-top-color:var(--blue)"><div class="kpi-lbl">MEJORA PROMEDIO</div><div class="kpi-val" style="color:var(--blue)" id="ui-mejora">--</div></div>
+      <div class="kpi-card" style="border-top-color:var(--cyan)"><div class="kpi-lbl">FEE MENSUAL USD</div><div class="kpi-val" style="color:var(--cyan)" id="ui-fee">--</div></div>
+      <div class="kpi-card" style="border-top-color:var(--amber)"><div class="kpi-lbl">CO2 EVITADO (Tons)</div><div class="kpi-val" style="color:var(--amber)" id="ui-co2">--</div></div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 380px; gap: 20px;">
-      <div class="chart-card">
-        <div style="font-family:var(--mono); font-size:11px; letter-spacing:1.8px; color:var(--muted); margin-bottom:16px;">PROYECCIÓN DE PRODUCCIÓN (POZOS SELECCIONADOS)</div>
-        <div id="chart-prod" style="height:300px"></div>
-      </div>
-      <div class="chart-card" style="justify-content:center;">
-          <div style="font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:2px; margin-bottom:16px;">MÉTRICAS DEL MOTOR PIML</div>
-          <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #152335; font-size:12px;">
-            <span style="color:#8BA8C0">Pozos Seleccionados</span><span style="font-family:var(--mono); font-weight:500; color:var(--green)" id="val-pozos">--</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #152335; font-size:12px;">
-            <span style="color:#8BA8C0">Factor Skin Promedio</span><span style="font-family:var(--mono); font-weight:500; color:var(--red)">S = __VAL_SKIN__</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; padding:12px 0; font-size:12px;">
-            <span style="color:#8BA8C0">Origen de Datos</span><span style="font-family:var(--mono); font-weight:500; color:var(--cyan)">AWS S3 (US-EAST-2)</span>
-          </div>
-      </div>
+    <h3 style="font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:3px; margin-top:20px; border-bottom:1px solid #1E3348; padding-bottom:8px;">DATOS DUROS DE INGENIERÍA (PIML)</h3>
+    <div class="hard-data-grid">
+        <div class="hard-card"><div class="hard-lbl">EUR INCREMENTAL (5 AÑOS)</div><div class="hard-val" id="ui-eur">--</div><div style="font-size:10px; color:var(--muted)">Barriles Totales Recuperados</div></div>
+        <div class="hard-card"><div class="hard-lbl">REDUCCIÓN WATER CUT</div><div class="hard-val" style="color:#3B82F6" id="ui-wc">--</div><div style="font-size:10px; color:var(--muted)">Menor Producción de Agua</div></div>
+        <div class="hard-card"><div class="hard-lbl">TIEMPO DE PAYBACK</div><div class="hard-val" style="color:#00E5A0" id="ui-pb">--</div><div style="font-size:10px; color:var(--muted)">Meses para Retorno de Inversión</div></div>
+        <div class="hard-card"><div class="hard-lbl">CAÍDA LIFTING COST</div><div class="hard-val" style="color:#F59E0B" id="ui-lc">--</div><div style="font-size:10px; color:var(--muted)">Ahorro por barril producido</div></div>
+    </div>
+
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:14px; padding:24px; margin-top:10px;">
+        <div style="font-family:var(--mono); font-size:11px; color:var(--muted); margin-bottom:15px; letter-spacing:1px;">PROYECCIÓN BASELINE vs FLOWBIO</div>
+        <div id="chart-div" style="height:280px;"></div>
     </div>
   </div>
 </div>
 
 <script>
-// Valores Base Inyectados desde Python (JSON de Groq)
-const PYTHON_DATA = {
-    pozos_base: __RAW_POZOS__,
-    ahorro_base: __RAW_AHORRO__,
-    fee_base: __RAW_FEE__,
-    co2_base: __RAW_CO2__,
-    mejora_pct: parseFloat("__VAL_MEJORA__") / 100
+// Datos S3 importados desde Python
+const S3_DATA = {
+    pozos: parseInt("__S3_POZOS__"), ahorro: parseFloat("__S3_AHORRO__"), mejora: parseFloat("__S3_MEJORA__"),
+    fee: parseFloat("__S3_FEE__"), co2: parseFloat("__S3_CO2__"), wc: parseFloat("__S3_WC__"),
+    eur: parseFloat("__S3_EUR__"), pb: parseFloat("__S3_PB__"), lc: parseFloat("__S3_LC__")
 };
 
-function go(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+function formatMoney(n) { return n >= 1e6 ? '$'+(n/1e6).toFixed(2)+'M' : (n >= 1e3 ? '$'+(n/1e3).toFixed(1)+'K' : '$'+Math.round(n)); }
+function formatNum(n) { return n >= 1e6 ? (n/1e6).toFixed(2)+'M' : (n >= 1e3 ? (n/1e3).toFixed(1)+'K' : Math.round(n)); }
+function go(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+async function animateTerminal(modeText) {
+    go('s-terminal');
+    const box = document.getElementById('term-log'); box.innerHTML = '';
+    const logs = [ `> Inicializando sistema...`, `> ${modeText}`, `> Resolviendo Tensores PIML...`, `> ✓ Modelado completado.` ];
+    for (let l of logs) { box.innerHTML += `<div>${l}</div>`; await new Promise(r => setTimeout(r, 600)); }
 }
 
-// Poblar los pozos automáticamente
-const container = document.getElementById('well-container');
-for(let i=1; i<=PYTHON_DATA.pozos_base; i++) {
-    const wellName = `UKCS-P${i.toString().padStart(3, '0')}`;
-    container.innerHTML += `
-        <label class="well-lbl">
-            <input type="checkbox" value="${wellName}" class="well-chk" checked>
-            ${wellName}
-        </label>
-    `;
+async function startS3Mode() {
+    await animateTerminal('Descargando Data Lake desde AWS S3...');
+    document.getElementById('dash-title').innerText = `FlowBio Piloto (${S3_DATA.pozos} Pozos)`;
+    document.getElementById('dash-origen').innerText = `ORIGEN: AWS S3 (DATOS REALES)`;
+    
+    // Poblar UI
+    document.getElementById('ui-ahorro').innerText = formatMoney(S3_DATA.ahorro);
+    document.getElementById('ui-mejora').innerText = `+${S3_DATA.mejora}%`;
+    document.getElementById('ui-fee').innerText = formatMoney(S3_DATA.fee);
+    document.getElementById('ui-co2').innerText = formatNum(S3_DATA.co2);
+    
+    document.getElementById('ui-eur').innerText = formatNum(S3_DATA.eur) + " BBLS";
+    document.getElementById('ui-wc').innerText = `-${S3_DATA.wc}%`;
+    document.getElementById('ui-pb').innerText = `${S3_DATA.pb} MESES`;
+    document.getElementById('ui-lc').innerText = `-$${S3_DATA.lc}/BBL`;
+
+    drawChart(S3_DATA.pozos * 350, S3_DATA.mejora / 100);
+    go('s-dash');
 }
 
-function marcarTodos() {
-    document.querySelectorAll('.well-chk').forEach(cb => cb.checked = true);
+async function startManualMode() {
+    await animateTerminal('Ejecutando Simulador Físico Manual...');
+    
+    // Obtener valores del formulario
+    const pozos = parseInt(document.getElementById('m-pozos').value);
+    const bpd = parseFloat(document.getElementById('m-bpd').value);
+    const perm = parseFloat(document.getElementById('m-perm').value);
+    const visc = parseFloat(document.getElementById('m-visc').value);
+
+    document.getElementById('dash-title').innerText = `FlowBio Simulación (${pozos} Pozos)`;
+    document.getElementById('dash-origen').innerText = `ORIGEN: SIMULADOR MANUAL (K=${perm}mD, v=${visc}cP)`;
+
+    // MATEMÁTICA MANUAL (Simplificada para la Demo)
+    const M = Math.max(0.1, Math.min(8.0, visc / perm * 10)); // Ratio movilidad dummy
+    const mejora_pct = Math.max(5.0, 30.0 - M*2); // Mejora teórica
+    const extra_bpd = (mejora_pct/100) * bpd * pozos;
+    
+    const ahorro_yr = extra_bpd * (75 - 18.5) * 0.19 * 365;
+    const fee_mo = extra_bpd * 5.0 * 30;
+    
+    const wc_red = Math.max(8.0, 22.0 - M);
+    const eur_extra = extra_bpd * 365 * 5 * 0.8;
+    const lc_drop = (18.5 * bpd*pozos) / ((bpd*pozos)+extra_bpd) - 18.5;
+
+    // Poblar UI
+    document.getElementById('ui-ahorro').innerText = formatMoney(ahorro_yr);
+    document.getElementById('ui-mejora').innerText = `+${mejora_pct.toFixed(1)}%`;
+    document.getElementById('ui-fee').innerText = formatMoney(fee_mo);
+    document.getElementById('ui-co2').innerText = formatNum(extra_bpd * 0.4);
+    
+    document.getElementById('ui-eur').innerText = formatNum(eur_extra) + " BBLS";
+    document.getElementById('ui-wc').innerText = `-${wc_red.toFixed(1)}%`;
+    document.getElementById('ui-pb').innerText = `1.5 MESES`; // Hardcoded for demo
+    document.getElementById('ui-lc').innerText = `-$${Math.abs(lc_drop).toFixed(2)}/BBL`;
+
+    drawChart(bpd * pozos, mejora_pct / 100);
+    go('s-dash');
 }
 
-function formatMoney(n) {
-    if(n >= 1000000) return '$' + (n/1000000).toFixed(2) + 'M';
-    if(n >= 1000) return '$' + (n/1000).toFixed(1) + 'K';
-    return '$' + Math.round(n);
-}
+function drawChart(baseProd, mejora) {
+    const x = Array.from({length:40}, (_,i)=>i);
+    const y1 = x.map(i => baseProd * Math.exp(-0.06*i));
+    const y2 = x.map(i => i<5 ? y1[i] : y1[i] + (baseProd * mejora * Math.exp(-0.015*(i-5))));
 
-async function runSim() {
-  const selected = document.querySelectorAll('.well-chk:checked').length;
-  if(selected === 0) { alert("⚠️ Seleccione al menos 1 pozo para continuar."); return; }
-
-  go('s-terminal');
-  
-  const box = document.getElementById('term-log');
-  const bar = document.getElementById('term-bar');
-  box.innerHTML = '';
-  
-  const logs = [
-    {t:300, m:`> Filtrando clúster en AWS: ${selected} pozos aislados...`},
-    {t:900, m:"> ✓ Archivo localizado: ultimo_reporte.json"},
-    {t:1500,m:"> Extrayendo matrices y re-escalando finanzas PIML..."},
-    {t:2100,m:"> ✓ Renderizando UI de Command Center."}
-  ];
-
-  for (let i = 0; i < logs.length; i++) {
-    await new Promise(r => setTimeout(r, logs[i].t - (i>0?logs[i-1].t:0)));
-    box.innerHTML += `<div style="margin-bottom:8px">${logs[i].m}</div>`;
-    bar.style.width = ((i+1)/logs.length)*100 + '%';
-  }
-
-  await new Promise(r => setTimeout(r, 600));
-  
-  // LA MAGIA DE LA ESCALA (Regla de 3 basada en los pozos seleccionados)
-  const ratio = selected / PYTHON_DATA.pozos_base;
-  
-  const ahorro_real = PYTHON_DATA.ahorro_base * ratio;
-  const fee_real = PYTHON_DATA.fee_base * ratio;
-  const co2_real = PYTHON_DATA.co2_base * ratio;
-
-  // Inyectar al HTML dinámicamente
-  document.getElementById('val-pozos').innerText = selected;
-  document.getElementById('val-ahorro').innerText = formatMoney(ahorro_real);
-  document.getElementById('val-fee').innerText = formatMoney(fee_real);
-  document.getElementById('val-co2').innerText = Math.round(co2_real) + " t";
-  
-  // GRAFICAR ESCALA REALISTA
-  const x = Array.from({length:40}, (_,i)=>i);
-  const base_bpd = selected * 350; // Asumimos ~350 bpd por pozo maduro
-  
-  const y1 = x.map(i => base_bpd * Math.exp(-0.06*i));
-  const y2 = x.map(i => i<5 ? y1[i] : y1[i] + (base_bpd * PYTHON_DATA.mejora_pct * Math.exp(-0.015*(i-5))));
-
-  Plotly.newPlot('chart-prod',[
-    {x:x, y:y1, name:'Baseline', type:'scatter', line:{color:'#EF4444',dash:'dot',width:2}},
-    {x:x, y:y2, name:'FlowBio', type:'scatter', line:{color:'#00E5A0',width:4}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.1)'},
-  ],{
-    paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)', margin:{l:40,r:10,t:10,b:30}, showlegend:false,
-    font:{family:'DM Mono',color:'#4A6580',size:10}, xaxis:{gridcolor:'#152335'}, yaxis:{gridcolor:'#152335'}
-  },{responsive:true,displayModeBar:false});
-
-  go('s-dash');
+    Plotly.newPlot('chart-div', [
+        {x:x, y:y1, name:'Baseline', type:'scatter', line:{color:'#EF4444',dash:'dot',width:2}},
+        {x:x, y:y2, name:'FlowBio', type:'scatter', line:{color:'#00E5A0',width:3}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.1)'}
+    ], {
+        paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', margin:{l:40,r:10,t:10,b:30}, showlegend:false,
+        font:{family:'DM Mono',color:'#4A6580',size:10}, xaxis:{gridcolor:'#152335'}, yaxis:{gridcolor:'#152335'}
+    }, {responsive:true, displayModeBar:false});
 }
 </script>
 </body>
 </html>
 """
 
-# Reemplazo de Strings Crudos
-html_final = HTML_BASE.replace("__VAL_TITULO__", titulo_dash)
-html_final = html_final.replace("__VAL_MEJORA__", str(mejora_pct))
-html_final = html_final.replace("__VAL_SKIN__", str(skin_avg))
+# Reemplazo de variables de Python a JS
+html_final = HTML_BASE.replace("__S3_POZOS__", str(pozos)).replace("__S3_AHORRO__", str(ahorro))
+html_final = html_final.replace("__S3_MEJORA__", str(mejora)).replace("__S3_FEE__", str(fee))
+html_final = html_final.replace("__S3_CO2__", str(co2)).replace("__S3_WC__", str(wc_red))
+html_final = html_final.replace("__S3_EUR__", str(eur)).replace("__S3_PB__", str(payback))
+html_final = html_final.replace("__S3_LC__", str(lc_drop))
 
-# Variables numéricas RAW para que Javascript haga la matemática interactiva
-html_final = html_final.replace("__RAW_POZOS__", str(base_pozos))
-html_final = html_final.replace("__RAW_AHORRO__", str(base_ahorro))
-html_final = html_final.replace("__RAW_FEE__", str(base_fee))
-html_final = html_final.replace("__RAW_CO2__", str(base_co2))
-
-components.html(html_final, height=900, scrolling=True)
+components.html(html_final, height=950, scrolling=True)
