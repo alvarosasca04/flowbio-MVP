@@ -32,9 +32,6 @@ st.markdown("""
         width: 100%; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;
     }
     .stButton > button:hover { box-shadow: 0 0 25px rgba(0,229,160,0.4); transform: translateY(-2px); }
-    
-    /* Estilo del input de texto (Buscador) */
-    .stTextInput > div > div > input { background-color: #1A2A3A; color: white; border: 1px solid #00E5A0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -136,25 +133,27 @@ if st.session_state.screen == 'splash':
 elif st.session_state.screen == 'dash':
     # --- SIDEBAR: BUSCADOR REAL E INDEPENDIENTE ---
     st.sidebar.markdown("<h3 style='font-family:Syne; color:#00E5A0;'>🧬 DATA LAKE</h3>", unsafe_allow_html=True)
+    st.sidebar.markdown("<hr style='opacity:0.2; margin-top:5px; margin-bottom:15px;'>", unsafe_allow_html=True)
     
-    # 1. Caja de texto para buscar explícitamente
+    # 1. BARRA DE BÚSQUEDA EXPLÍCITA (Input de texto visible)
     search_query = st.sidebar.text_input("🔍 Buscar pozo por nombre:", placeholder="Ej. Piper, Norte, 15/17...")
     
-    # 2. Lógica de Filtrado Inteligente
+    # 2. Lógica de Filtrado
     if search_query:
         filtered_wells = [well for well in AGENT_DATA.keys() if search_query.lower() in well.lower()]
     else:
-        filtered_wells = list(AGENT_DATA.keys()) # Mostrar todos si no hay búsqueda
+        filtered_wells = list(AGENT_DATA.keys())
         
-    # 3. Manejo de errores si no se encuentra el pozo
+    # 3. Manejo de resultados vacíos
     if len(filtered_wells) == 0:
         st.sidebar.warning("⚠️ No se encontraron pozos con ese nombre.")
-        st.stop() # Detiene la app aquí para que no falle lo de abajo
+        st.stop()
         
-    # 4. Selector del resultado filtrado
-    selected_well = st.sidebar.selectbox("Resultados de tu búsqueda:", filtered_wells)
+    # 4. SELECTOR DE RESULTADOS VISIBLE
+    selected_well = st.sidebar.selectbox("🎯 Selecciona el pozo para analizar:", filtered_wells)
     d = AGENT_DATA[selected_well]
     
+    st.sidebar.markdown("<br><br><br>", unsafe_allow_html=True)
     st.sidebar.markdown("<hr style='opacity:0.2;'>", unsafe_allow_html=True)
     if st.sidebar.button("🔌 DESCONECTAR"):
         st.session_state.screen = 'splash'
@@ -207,7 +206,7 @@ elif st.session_state.screen == 'dash':
             '<div style="margin-bottom:15px;">'
             '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Ratio de Movilidad (M)</p>'
             '<p style="font-family:\'Syne\'; font-size:26px; color:#22D3EE; margin:0;">' + str(d['m_ratio']) + '</p>'
-            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Al ser < 1, previene la canalización de agua (viscous fingering), forzando un barrido uniforme del crudo en la roca.</p>'
+            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Al ser < 1, previene la canalización de agua, forzando un barrido uniforme del crudo en la roca.</p>'
             '</div>'
             
             '<div style="margin-bottom:15px;">'
@@ -219,7 +218,7 @@ elif st.session_state.screen == 'dash':
             '<div style="margin-bottom:15px;">'
             '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Reservas Adicionales (5A)</p>'
             '<p style="font-family:\'Syne\'; font-size:26px; color:#00E5A0; margin:0;">' + f"{d['eur']:,.0f}" + ' <span style="font-size:14px; color:#64748B;">bbls</span></p>'
-            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Petróleo incremental directo a la cuota de producción proyectada por la alta eficiencia de barrido del Na-CMC.</p>'
+            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Petróleo incremental directo a la cuota de producción proyectada por la eficiencia de barrido.</p>'
             '</div>'
             '</div>'
         )
