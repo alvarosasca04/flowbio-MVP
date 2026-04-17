@@ -20,16 +20,8 @@ st.markdown("""
         background: rgba(13, 21, 32, 0.8); border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 12px; padding: 22px; border-top: 4px solid #00E5A0;
     }
-    
-    .tech-box {
-        background: rgba(26, 42, 58, 0.4); border-left: 3px solid #22D3EE;
-        border-radius: 8px; padding: 12px; margin-bottom: 10px;
-    }
-    
     .kpi-label { font-family: 'Inter'; font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
     .kpi-value { font-family: 'Syne'; font-size: 32px; font-weight: 800; color: #fff; margin: 5px 0; }
-    .tech-label { font-family: 'DM Mono'; font-size: 10px; color: #22D3EE; margin: 0; text-transform: uppercase; }
-    .reasoning-text { font-family: 'Inter'; font-size: 12px; color: #8BA8C0; line-height: 1.4; margin-top: 5px; }
 
     .stButton > button {
         background: #00E5A0 !important; color: #060B11 !important;
@@ -45,7 +37,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════
-# 2. CONEXIÓN S3 (DATOS REALES DE AGENTES)
+# 2. CONEXIÓN REAL A S3 (DATOS DE AGENTES)
 # ══════════════════════════════════════════════════════
 @st.cache_data(ttl=1)
 def load_data_from_s3():
@@ -83,16 +75,18 @@ elif st.session_state.screen == 'dash':
     selected_well = st.selectbox("Pozo analizado por agentes:", wells)
     d = st.session_state.all_data[selected_well]
     
-    # KPIs Superiores
+    # --- KPIs SUPERIORES ---
     k1, k2, k3, k4 = st.columns(4)
     with k1: st.markdown(f'<div class="kpi-box"><p class="kpi-label">AHORRO OPEX</p><p class="kpi-value">${d["ahorro"]:,}</p></div>', unsafe_allow_html=True)
     with k2: st.markdown(f'<div class="kpi-box" style="border-top-color:#3B82F6;"><p class="kpi-label">MEJORA BARRIDO</p><p class="kpi-value">+{d["mejora"]}%</p></div>', unsafe_allow_html=True)
     with k3: st.markdown(f'<div class="kpi-box" style="border-top-color:#22D3EE;"><p class="kpi-label">SUCCESS FEE</p><p class="kpi-value">${d["fee"]:,}</p></div>', unsafe_allow_html=True)
     with k4: st.markdown(f'<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">CO2 EVITADO</p><p class="kpi-value">{d["co2"]}t</p></div>', unsafe_allow_html=True)
 
+    # --- CONTENIDO PRINCIPAL (GRÁFICA E INSIGHTS) ---
     cl, cr = st.columns([2.3, 1.7])
     
     with cl:
+        # Gráfica Dinámica
         chart_html = f"""<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script><div id="plot" style="height:500px; border-radius:12px; background:#0D1520; margin-top:20px; border:1px solid rgba(255,255,255,0.05);"></div>
         <script>
             var x = Array.from({{length:40}}, (_,i)=>i); var base = 350; var mej = {d['mejora']} / 100;
@@ -103,34 +97,39 @@ elif st.session_state.screen == 'dash':
         components.html(chart_html, height=530)
         
     with cr:
-        # CONSTRUCCIÓN BLINDADA DEL HTML
-        insight_html = f"""
-        <div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); height:500px; overflow-y:auto;">
-            <p style="color:#00E5A0; font-weight:800; font-size:12px; margin-bottom:15px;">🧠 ENGINEERING INSIGHTS (5-AGENT CONSENSUS)</p>
-            
-            <div style="background: rgba(26, 42, 58, 0.4); border-left: 3px solid #22D3EE; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
-                <p style="font-family: 'DM Mono'; font-size: 10px; color: #22D3EE; margin: 0; text-transform: uppercase;">VISCOSIDAD PLÁSTICA (PV): {d.get('visc_p', '95.49')} cP</p>
-                <p style="font-family: 'Inter'; font-size: 12px; color: #8BA8C0; line-height: 1.4; margin-top: 5px;"><b>¿Por qué importa?</b> Una viscosidad alta garantiza que el fluido empuje el crudo sin "dedear" el agua, maximizando el barrido areal.</p>
-            </div>
-            
-            <div style="background: rgba(26, 42, 58, 0.4); border-left: 3px solid #22D3EE; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
-                <p style="font-family: 'DM Mono'; font-size: 10px; color: #22D3EE; margin: 0; text-transform: uppercase;">YIELD POINT (YP): {d.get('yield_p', '28.1')} lb/100ft²</p>
-                <p style="font-family: 'Inter'; font-size: 12px; color: #8BA8C0; line-height: 1.4; margin-top: 5px;"><b>¿Por qué importa?</b> Indica la estabilidad bajo presión. Un YP balanceado evita la degradación mecánica del polímero en el fondo.</p>
-            </div>
-            
-            <div style="background: rgba(26, 42, 58, 0.4); border-left: 3px solid #22D3EE; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
-                <p style="font-family: 'DM Mono'; font-size: 10px; color: #22D3EE; margin: 0; text-transform: uppercase;">PAYBACK: {d.get('payback', '1.0')} MESES</p>
-                <p style="font-family: 'Inter'; font-size: 12px; color: #8BA8C0; line-height: 1.4; margin-top: 5px;"><b>¿Por qué importa?</b> Retorno casi inmediato. El crudo extra cubre el costo tecnológico en tiempo récord.</p>
-            </div>
-            
-            <p style="color:#64748B; font-size:10px; margin-top:15px; text-transform: uppercase;">INCREMENTAL PROYECTADO (EUR):</p>
-            <p style="color:#00E5A0; font-size:32px; font-weight:800; margin:0;">{d.get('eur', 0):,} <span style="font-size:12px; color:#64748B;">bbls</span></p>
-        </div>
-        """
-        st.markdown(insight_html, unsafe_allow_html=True)
+        st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
+        
+        # 1. Extraemos los valores primero para que el HTML sea una cadena limpia
+        pv_val = d.get('visc_p', '95.49')
+        yp_val = d.get('yield_p', '28.1')
+        pb_val = d.get('payback', '1.0')
+        eur_val = f"{d.get('eur', 0):,}"
 
-    # Botón de Inicio
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🏠 VOLVER AL INICIO"):
+        # 2. Definimos el HTML sin indentaciones extrañas para evitar errores de renderizado
+        insight_html = f"""<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); height:500px; overflow-y:auto;">
+<p style="color:#00E5A0; font-weight:800; font-size:12px; margin-bottom:15px;">🧠 ENGINEERING INSIGHTS (5-AGENT CONSENSUS)</p>
+<div style="background: rgba(26, 42, 58, 0.4); border-left: 3px solid #22D3EE; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+<p style="font-family: 'DM Mono'; font-size: 10px; color: #22D3EE; margin: 0; text-transform: uppercase;">VISCOSIDAD PLÁSTICA (PV): {pv_val} cP</p>
+<p style="font-family: 'Inter'; font-size: 12px; color: #8BA8C0; line-height: 1.4; margin-top: 5px;"><b>¿Por qué importa?</b> Una viscosidad alta garantiza que el fluido empuje el crudo sin "dedear" el agua, maximizando el barrido areal.</p>
+</div>
+<div style="background: rgba(26, 42, 58, 0.4); border-left: 3px solid #22D3EE; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+<p style="font-family: 'DM Mono'; font-size: 10px; color: #22D3EE; margin: 0; text-transform: uppercase;">YIELD POINT (YP): {yp_val} lb/100ft²</p>
+<p style="font-family: 'Inter'; font-size: 12px; color: #8BA8C0; line-height: 1.4; margin-top: 5px;"><b>¿Por qué importa?</b> Indica la estabilidad bajo presión. Un YP balanceado evita la degradación mecánica del polímero en el fondo.</p>
+</div>
+<div style="background: rgba(26, 42, 58, 0.4); border-left: 3px solid #22D3EE; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+<p style="font-family: 'DM Mono'; font-size: 10px; color: #22D3EE; margin: 0; text-transform: uppercase;">PAYBACK: {pb_val} MESES</p>
+<p style="font-family: 'Inter'; font-size: 12px; color: #8BA8C0; line-height: 1.4; margin-top: 5px;"><b>¿Por qué importa?</b> Retorno casi inmediato. El crudo extra cubre el costo tecnológico en tiempo récord.</p>
+</div>
+<p style="color:#64748B; font-size:10px; margin-top:15px; text-transform: uppercase;">INCREMENTAL PROYECTADO (EUR):</p>
+<p style="color:#00E5A0; font-size:32px; font-weight:800; margin:0;">{eur_val} <span style="font-size:12px; color:#64748B;">bbls</span></p>
+</div>"""
+        
+        # 3. Renderizado forzado con st.write y permiso HTML
+        st.write(insight_html, unsafe_allow_html=True)
+
+    # --- BOTÓN DE REINICIO ---
+    st.markdown("<br><hr style='opacity:0.1;'><br>", unsafe_allow_html=True)
+    _, c_mid, _ = st.columns([1, 2, 1])
+    if c_mid.button("🏠 VOLVER AL INICIO"):
         st.session_state.screen = 'splash'
         st.rerun()
