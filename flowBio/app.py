@@ -7,7 +7,7 @@ import math
 from fpdf import FPDF
 
 # ══════════════════════════════════════════════════════
-# 1. IDENTIDAD VISUAL Y CONFIGURACIÓN PREMIUM
+# 1. IDENTIDAD VISUAL PREMIUM
 # ══════════════════════════════════════════════════════
 st.set_page_config(page_title="FlowBio Subsurface OS", page_icon="🧬", layout="wide", initial_sidebar_state="collapsed")
 
@@ -34,16 +34,14 @@ if 'screen' not in st.session_state: st.session_state.screen = 'splash'
 if 'data' not in st.session_state: st.session_state.data = None
 
 # ══════════════════════════════════════════════════════
-# 2. MOTOR DE INGENIERÍA PIML (DATOS REALES DE AGENTES)
+# 2. MOTOR DE INGENIERÍA PIML (DATOS REALES)
 # ══════════════════════════════════════════════════════
 def calculate_piml_physics(fluido, pozos, bpd):
-    # DATOS REALES DEL REPORTE TÉCNICO FLOWBIO 
+    # Parámetros del reporte oficial
     n = 0.569 if "Na-CMC" in fluido else 0.78
     k_consistencia = 151.4 if "Na-CMC" in fluido else 85.2
     mobility_ratio = 0.28 if "Na-CMC" in fluido else 0.85
     mejora_pct = 16.5 if "Na-CMC" in fluido else 11.0
-    
-    # Cálculos económicos basados en el análisis de agentes 
     extra_bpd = bpd * (mejora_pct / 100)
     ahorro_anual = extra_bpd * 365 * pozos * 2.57 
     eur_5a = extra_bpd * 365 * 5 * 0.8 * pozos
@@ -56,36 +54,82 @@ def calculate_piml_physics(fluido, pozos, bpd):
     }
 
 # ══════════════════════════════════════════════════════
-# 3. MOTOR DE REPORTE PDF (FORMATO OFICIAL VISIBLE)
+# 3. MOTOR DE REPORTE PDF (DISTRIBUCIÓN MEJORADA)
 # ══════════════════════════════════════════════════════
 class FlowBioReport(FPDF):
     def header(self):
         self.set_fill_color(6, 11, 17)
-        self.rect(0, 0, 210, 35, 'F')
-        self.set_font('Arial', 'B', 16); self.set_text_color(255, 255, 255)
-        self.set_xy(10, 10); self.cell(0, 10, 'FlowBio AI Engine', 0, 1, 'L')
-        self.set_font('Arial', '', 10); self.cell(0, 5, 'Reporte de Simulacion EOR Na-CMC Jacinto de Agua PIML', 0, 1, 'L')
+        self.rect(0, 0, 210, 40, 'F')
+        self.set_xy(10, 12)
+        self.set_font('Arial', 'B', 22); self.set_text_color(0, 229, 160)
+        self.cell(0, 10, 'FlowBio AI Engine', 0, 1, 'L')
+        self.set_font('Arial', '', 10); self.set_text_color(255, 255, 255)
+        self.cell(0, 5, 'Simulacion Avanzada EOR Na-CMC Jacinto de Agua PIML', 0, 1, 'L')
         self.ln(10)
+
+    def draw_section_header(self, title):
+        self.ln(5)
+        self.set_font('Arial', 'B', 12); self.set_text_color(60, 60, 60)
+        self.cell(0, 10, title.upper(), 0, 1, 'L')
+        self.set_draw_color(0, 229, 160); self.set_line_width(0.5)
+        self.line(10, self.get_y(), 200, self.get_y())
+        self.ln(5)
+
+    def draw_metric_card(self, label, value, x, y):
+        self.set_fill_color(250, 250, 250); self.set_draw_color(230, 230, 230)
+        self.rect(x, y, 46, 22, 'FD')
+        self.set_xy(x, y + 4)
+        self.set_font('Arial', 'B', 14); self.set_text_color(0, 120, 80)
+        self.cell(46, 8, value, 0, 1, 'C')
+        self.set_font('Arial', '', 8); self.set_text_color(120, 120, 120)
+        self.cell(46, 5, label, 0, 0, 'C')
 
 def generate_pdf_base64(d):
     pdf = FlowBioReport()
     pdf.add_page()
-    pdf.set_font('Arial', 'B', 11); pdf.set_text_color(0, 229, 160)
-    pdf.cell(0, 10, 'IMPACTO ECONOMICO ANUAL PROYECTADO', 0, 1, 'L')
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.set_font('Arial', 'B', 22); pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 15, f"${d['ahorro']:,.0f} USD/año", 0, 1)
     
-    # Análisis Reológico (Legibilidad mejorada para el reporte)
-    pdf.ln(10); pdf.set_font('Arial', 'B', 11); pdf.set_text_color(0, 229, 160)
-    pdf.cell(0, 10, 'ANALISIS REOLOGICO - MOTOR PIML', 0, 1, 'L')
-    pdf.set_font('Arial', '', 11); pdf.set_text_color(0, 0, 0)
-    pdf.cell(0, 8, f"- Indice de flujo (n): {d['n']}", 0, 1)
-    pdf.cell(0, 8, f"- Consistencia K: {d['k']} mPas", 0, 1)
-    pdf.cell(0, 8, f"- Eficiencia de barrido: {d['mejora']}%", 0, 1)
+    # SECCIÓN 1: IMPACTO FINANCIERO
+    pdf.draw_section_header('Impacto Economico Anual Proyectado')
+    pdf.set_font('Arial', 'B', 26); self_text_color = (0, 0, 0)
+    pdf.cell(0, 18, f"${d['ahorro']:,.0f} USD/año", 0, 1, 'L')
+    pdf.draw_metric_card("ROI Estimado", "15%", 10, 85)
+    pdf.draw_metric_card("Ahorro/bbl", "$2.57", 58, 85)
+    pdf.draw_metric_card("OPEX Actual", "$19.80", 106, 85)
+    pdf.draw_metric_card("OPEX FlowBio", "$17.23", 154, 85)
+    
+    # SECCIÓN 2: REOLOGÍA Y FÍSICA
+    pdf.set_xy(10, 115)
+    pdf.draw_section_header('Analisis Reologico - Motor PIML')
+    pdf.draw_metric_card("Indice flujo (n)", str(d['n']), 10, 132)
+    pdf.draw_metric_card("Consistencia K", f"{d['k']} mPas", 58, 132)
+    pdf.draw_metric_card("Ratio movilidad", str(d['m_ratio']), 106, 132)
+    pdf.draw_metric_card("Ef. barrido", f"{d['mejora']}%", 154, 132)
+    
+    # SECCIÓN 3: TABLA COMPARATIVA
+    pdf.set_xy(10, 165)
+    pdf.draw_section_header('Comparativa de Operatividad')
+    pdf.set_font('Arial', 'B', 9); pdf.set_fill_color(240, 240, 240)
+    pdf.cell(50, 9, "Atributo", 1, 0, 'C', True)
+    pdf.cell(70, 9, "HPAM Sintetico", 1, 0, 'C', True)
+    pdf.cell(70, 9, "FlowBio Na-CMC", 1, 1, 'C', True)
+    pdf.set_font('Arial', '', 9)
+    comparisons = [
+        ["Biodegradabilidad", "No biodegradable", "100% biodegradable"],
+        ["Skin Damage", "Alto Riesgo", "Minimo (Validado)"],
+        ["HSE Factor", "Toxico", "Seguro / Eco-amigable"]
+    ]
+    for row in comparisons:
+        pdf.cell(50, 9, row[0], 1); pdf.cell(70, 9, row[1], 1); pdf.cell(70, 9, row[2], 1, 1)
 
-    binary_pdf = pdf.output(dest="S").encode("latin-1")
-    return base64.b64encode(binary_pdf).decode()
+    # SECCIÓN 4: CONCLUSIONES
+    pdf.ln(10); pdf.draw_section_header('Conclusiones Ejecutivas')
+    pdf.set_font('Arial', '', 10.5); pdf.set_text_color(50, 50, 50)
+    conclu = (f"El analisis de los {d['pozos']} pozos arroja una viabilidad tecnica superior para el uso de Na-CMC. "
+              f"Se estima una recuperacion EUR adicional de {d['eur']:,.0f} barriles en 5 años, con una reduccion "
+              "critica de la huella de carbono operacional.")
+    pdf.multi_cell(0, 7, conclu)
+
+    return base64.b64encode(pdf.output(dest="S").encode("latin-1")).decode()
 
 # ══════════════════════════════════════════════════════
 # 4. PANTALLAS
@@ -98,7 +142,7 @@ if st.session_state.screen == 'splash':
     if c2.button("DEMO REAL S3 (10 POZOS)"):
         st.session_state.data = calculate_piml_physics("Na-CMC", 10, 350)
         st.session_state.screen = 'dash'; st.rerun()
-    if c3.button("SIMULADOR IA (MANUAL)"):
+    if c3.button("SIMULADOR IA (CONFIGURABLE)"):
         st.session_state.screen = 'setup'; st.rerun()
 
 elif st.session_state.screen == 'setup':
@@ -143,5 +187,5 @@ elif st.session_state.screen == 'dash':
             <p style="font-size:9px; color:#475569; margin-top:15px;">RESERVAS EUR (5A)</p><p style="font-family:'Syne'; font-size:26px; color:#22D3EE; margin:0;">{d['eur']:,.0f}</p>
             <p style="font-size:9px; color:#475569; margin-top:15px;">CONSISTENCIA K</p><p style="font-family:'Syne'; font-size:26px; color:#00E5A0; margin:0;">{d['k']}</p></div>""", unsafe_allow_html=True)
         pdf_b64 = generate_pdf_base64(d)
-        st.markdown(f'<br><a href="data:application/pdf;base64,{pdf_b64}" download="FlowBio_Report.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 DESCARGAR REPORTE OFICIAL</button></a>', unsafe_allow_html=True)
+        st.markdown(f'<br><a href="data:application/pdf;base64,{pdf_b64}" download="FlowBio_Consultancy_Report.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 DESCARGAR REPORTE ESTRATEGICO</button></a>', unsafe_allow_html=True)
         if st.button("🏠 INICIO"): st.session_state.screen = 'splash'; st.rerun()
