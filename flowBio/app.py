@@ -39,23 +39,38 @@ st.markdown("""
 if 'screen' not in st.session_state: st.session_state.screen = 'splash'
 
 # ══════════════════════════════════════════════════════
-# 2. BASE DE DATOS DE AGENTES 
+# 2. BASE DE DATOS DE AGENTES (10 POZOS SIMULADOS DE S3)
 # ══════════════════════════════════════════════════════
 AGENT_DATA = {
     "Pozo 15/17-1 (Central North Sea)": {
-        "ahorro": 394000.0, "mejora": 18.2, "fee": 4500.0, "co2": 112.0,
-        "m_ratio": 0.25, "n": 0.569, "eur": 85000.0, "k": 151.4, "mpy": 0.08,
-        "pozos": 1, "bpd": 420, "label": "POZO CRÍTICO - PRIORIDAD ALTA"
+        "ahorro": 394000.0, "mejora": 18.2, "fee": 4500.0, "co2": 112.0, "m_ratio": 0.25, "n": 0.569, "eur": 85000.0, "k": 151.4, "pozos": 1, "bpd": 420, "label": "PRIORIDAD ALTA - CRÍTICO"
     },
     "Pozo 15/17-2 (Flanco Sur)": {
-        "ahorro": 125000.0, "mejora": 12.1, "fee": 1800.0, "co2": 65.0,
-        "m_ratio": 0.32, "n": 0.569, "eur": 32000.0, "k": 151.4, "mpy": 0.15,
-        "pozos": 1, "bpd": 280, "label": "POZO ESTABLE - PRIORIDAD MEDIA"
+        "ahorro": 125000.0, "mejora": 12.1, "fee": 1800.0, "co2": 65.0, "m_ratio": 0.32, "n": 0.569, "eur": 32000.0, "k": 151.4, "pozos": 1, "bpd": 280, "label": "PRIORIDAD MEDIA - ESTABLE"
     },
     "Pozo 15/17-3 (Inyector Norte)": {
-        "ahorro": 280000.0, "mejora": 15.8, "fee": 3200.0, "co2": 95.0,
-        "m_ratio": 0.28, "n": 0.569, "eur": 68000.0, "k": 151.4, "mpy": 0.11,
-        "pozos": 1, "bpd": 350, "label": "POZO ESTABLE - PRIORIDAD ALTA"
+        "ahorro": 280000.0, "mejora": 15.8, "fee": 3200.0, "co2": 95.0, "m_ratio": 0.28, "n": 0.569, "eur": 68000.0, "k": 151.4, "pozos": 1, "bpd": 350, "label": "PRIORIDAD ALTA - ESTABLE"
+    },
+    "Pozo 15/17-4 (Piper Alpha Area)": {
+        "ahorro": 450000.0, "mejora": 19.5, "fee": 5200.0, "co2": 130.0, "m_ratio": 0.22, "n": 0.569, "eur": 95000.0, "k": 151.4, "pozos": 1, "bpd": 500, "label": "PRIORIDAD MÁXIMA - DECLINACIÓN"
+    },
+    "Pozo 15/17-5 (Tartan Field)": {
+        "ahorro": 195000.0, "mejora": 14.2, "fee": 2500.0, "co2": 82.0, "m_ratio": 0.29, "n": 0.569, "eur": 45000.0, "k": 151.4, "pozos": 1, "bpd": 310, "label": "PRIORIDAD MEDIA - ESTABLE"
+    },
+    "Pozo 15/17-6a (Claymore)": {
+        "ahorro": 310000.0, "mejora": 16.5, "fee": 3800.0, "co2": 98.0, "m_ratio": 0.27, "n": 0.569, "eur": 72000.0, "k": 151.4, "pozos": 1, "bpd": 380, "label": "PRIORIDAD ALTA - ESTABLE"
+    },
+    "Pozo 15/17-7 (Saltire)": {
+        "ahorro": 95000.0, "mejora": 10.5, "fee": 1200.0, "co2": 45.0, "m_ratio": 0.45, "n": 0.569, "eur": 21000.0, "k": 151.4, "pozos": 1, "bpd": 220, "label": "PRIORIDAD BAJA - MADURO"
+    },
+    "Pozo 15/17-8b (Galley)": {
+        "ahorro": 520000.0, "mejora": 22.1, "fee": 6500.0, "co2": 145.0, "m_ratio": 0.18, "n": 0.569, "eur": 115000.0, "k": 151.4, "pozos": 1, "bpd": 550, "label": "PRIORIDAD MÁXIMA - SWEET SPOT"
+    },
+    "Pozo 15/17-9 (Ivanhoe)": {
+        "ahorro": 215000.0, "mejora": 13.8, "fee": 2900.0, "co2": 78.0, "m_ratio": 0.31, "n": 0.569, "eur": 51000.0, "k": 151.4, "pozos": 1, "bpd": 340, "label": "PRIORIDAD MEDIA - ESTABLE"
+    },
+    "Pozo 15/17-10 (Rob Roy)": {
+        "ahorro": 380000.0, "mejora": 17.5, "fee": 4200.0, "co2": 105.0, "m_ratio": 0.26, "n": 0.569, "eur": 81000.0, "k": 151.4, "pozos": 1, "bpd": 400, "label": "PRIORIDAD ALTA - ESTABLE"
     }
 }
 
@@ -116,11 +131,11 @@ def generate_pdf_base64(d, nombre_pozo):
     pdf.draw_metric_card("Ef. barrido", f"{d['mejora']}%", 154, 142)
     
     pdf.set_xy(10, 175)
-    pdf.draw_section_header('Resolucion de Agentes de IA')
+    pdf.draw_section_header('Resolucion Estrategica')
     pdf.set_font('Arial', '', 10.5); pdf.set_text_color(50, 50, 50)
-    conclu = (f"El orquestador de Groq determino la viabilidad de inyeccion para este activo. "
-              f"Se estima una recuperacion EUR adicional de {d['eur']:,.0f} barriles, con un Success Fee "
-              f"estimado de ${d['fee']:,.0f} USD. La reduccion de huella de carbono es de {d['co2']} toneladas.")
+    conclu = (f"El orquestador determino viabilidad de inyeccion ({d['label']}). "
+              f"Al presentar un Ratio de Movilidad de {d['m_ratio']}, se previene la canalizacion prematura de agua. "
+              f"Se estima una recuperacion EUR adicional de {d['eur']:,.0f} barriles.")
     pdf.multi_cell(0, 7, conclu)
 
     return base64.b64encode(pdf.output(dest="S").encode("latin-1")).decode()
@@ -143,7 +158,7 @@ elif st.session_state.screen == 'dash':
     st.sidebar.markdown("<h3 style='font-family:Syne; color:#00E5A0;'>🧬 DATA LAKE</h3>", unsafe_allow_html=True)
     
     selected_well = st.sidebar.selectbox(
-        "🔍 Buscar y seleccionar activo:",
+        "🔍 Seleccione el activo:",
         list(AGENT_DATA.keys())
     )
     d = AGENT_DATA[selected_well]
@@ -162,11 +177,11 @@ elif st.session_state.screen == 'dash':
     with k3: st.markdown('<div class="kpi-box" style="border-top-color:#22D3EE;"><p class="kpi-label">FEE MENSUAL USD</p><p class="kpi-value" style="color:#22D3EE;">$' + f"{d['fee']:,.0f}" + '</p></div>', unsafe_allow_html=True)
     with k4: st.markdown('<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">ESG CO2 EVITADO</p><p class="kpi-value" style="color:#F59E0B;">' + str(d['co2']) + 't</p></div>', unsafe_allow_html=True)
 
-    cl, cr = st.columns([3, 1])
+    cl, cr = st.columns([2.5, 1.5])
     with cl:
         HTML_CHART = """
         <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-        <div id="plot" style="height:480px; border-radius:12px; background:#0D1520; border:1px solid rgba(255,255,255,0.05); margin-top:20px;"></div>
+        <div id="plot" style="height:500px; border-radius:12px; background:#0D1520; border:1px solid rgba(255,255,255,0.05); margin-top:20px;"></div>
         <script>
             var x = Array.from({length:40}, (_,i)=>i);
             var base = __BASE_BPD__;
@@ -180,25 +195,38 @@ elif st.session_state.screen == 'dash':
         </script>
         """.replace("__BASE_BPD__", str(d['bpd'])).replace("__MEJORA_PCT__", str(d['mejora']/100))
         
-        components.html(HTML_CHART, height=520)
+        components.html(HTML_CHART, height=540)
         
     with cr:
-        # Se elimina el uso de f-strings en bloques HTML largos para asegurar que el servidor no falle
-        html_fisica = (
-            '<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid #1A2A3A; margin-top:20px;">'
-            '<p style="font-size:10px; color:#64748B; font-weight:700; letter-spacing:1px;">FÍSICA DEL POZO</p>'
-            '<p style="font-size:9px; color:#475569; margin-top:15px;">RATIO DE MOVILIDAD</p>'
+        # AQUI ESTA LA MAGIA: Desglose del "Por qué" para vender la tecnología
+        html_insights = (
+            '<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); margin-top:20px; height:500px; display:flex; flex-direction:column; justify-content:space-between;">'
+            '<p style="font-size:12px; color:#00E5A0; font-weight:800; letter-spacing:1px; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">🧠 ENGINEERING INSIGHTS</p>'
+            
+            '<div style="margin-bottom:15px;">'
+            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Ratio de Movilidad (M)</p>'
             '<p style="font-family:\'Syne\'; font-size:26px; color:#22D3EE; margin:0;">' + str(d['m_ratio']) + '</p>'
-            '<p style="font-size:9px; color:#475569; margin-top:15px;">ÍNDICE DE FLUJO (n)</p>'
+            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Al ser < 1, previene la canalización de agua (viscous fingering), forzando un barrido uniforme del crudo en la roca.</p>'
+            '</div>'
+            
+            '<div style="margin-bottom:15px;">'
+            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Índice de Flujo (n)</p>'
             '<p style="font-family:\'Syne\'; font-size:26px; color:#F59E0B; margin:0;">' + str(d['n']) + '</p>'
-            '<hr style="opacity:0.1; margin: 15px 0;">'
-            '<p style="font-size:9px; color:#475569;">RESERVAS EUR (5A)</p>'
-            '<p style="font-family:\'Syne\'; font-size:26px; color:#00E5A0; margin:0;">' + f"{d['eur']:,.0f}" + ' bbls</p>'
+            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Comportamiento pseudoplástico: fluye fácil cerca del pozo (ahorra energía de bombeo) y espesa en el yacimiento.</p>'
+            '</div>'
+            
+            '<div style="margin-bottom:15px;">'
+            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Reservas Adicionales (5A)</p>'
+            '<p style="font-family:\'Syne\'; font-size:26px; color:#00E5A0; margin:0;">' + f"{d['eur']:,.0f}" + ' <span style="font-size:14px; color:#64748B;">bbls</span></p>'
+            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Petróleo incremental directo a la cuota de producción proyectada por la eficiencia de barrido del Na-CMC.</p>'
+            '</div>'
+            
             '</div>'
         )
-        st.markdown(html_fisica, unsafe_allow_html=True)
+        st.markdown(html_insights, unsafe_allow_html=True)
         
-        pdf_b64 = generate_pdf_base64(d, selected_well)
-        safe_filename = selected_well[:10].replace(" ", "_")
-        btn_html = '<br><a href="data:application/pdf;base64,' + pdf_b64 + '" download="Reporte_' + safe_filename + '.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 REPORTE DEL POZO</button></a>'
-        st.markdown(btn_html, unsafe_allow_html=True)
+    # Botón de Reporte en todo el ancho para cerrar
+    pdf_b64 = generate_pdf_base64(d, selected_well)
+    safe_filename = selected_well[:10].replace(" ", "_")
+    btn_html = '<a href="data:application/pdf;base64,' + pdf_b64 + '" download="Reporte_' + safe_filename + '.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer; margin-top:10px;">📥 DESCARGAR REPORTE DEL POZO</button></a>'
+    st.markdown(btn_html, unsafe_allow_html=True)
