@@ -3,13 +3,12 @@ import streamlit.components.v1 as components
 import json
 import boto3
 import math
-import plotly.graph_objects as go
 from fpdf import FPDF
 from datetime import datetime
 from io import BytesIO
 
 # ══════════════════════════════════════════════════════
-# 1. IDENTIDAD VISUAL PREMIUM Y CSS
+# 1. IDENTIDAD VISUAL PREMIUM
 # ══════════════════════════════════════════════════════
 st.set_page_config(page_title="FlowBio Subsurface OS", page_icon="🧬", layout="wide")
 
@@ -52,11 +51,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════
-# 2. GENERADOR DE REPORTE PDF CORPORATIVO
+# 2. GENERADOR DE REPORTE PDF (ESTRUCTURA BLINDADA)
 # ══════════════════════════════════════════════════════
 class FlowBioReport(FPDF):
     def header(self):
-        self.set_fill_color(6, 11, 17)
+        self.set_fill_color(6, 11, 17) # Fondo oscuro corporativo
         self.rect(0, 0, 210, 297, 'F')
         self.set_font('Helvetica', 'B', 24)
         self.set_text_color(255, 255, 255)
@@ -70,35 +69,48 @@ def create_pdf_report(well_name, data):
     pdf = FlowBioReport()
     pdf.add_page()
     
-    pdf.set_font('Helvetica', 'B', 16)
+    pdf.set_font('Helvetica', 'B', 18)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(0, 10, f'Activo: {well_name}', 0, 1)
-    
-    # Gráfica para el PDF
-    base = 350
-    mej = data['mejora'] / 100
-    x = list(range(40))
-    y1 = [base * math.exp(-0.06*i) for i in x]
-    y2 = [(y1[i] + (base * mej * math.exp(-0.015*(i-5)))) if i>=5 else y1[i] for i in x]
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=x, y=y1, line=dict(color='#EF4444', dash='dot'), name='Base (HPAM)'))
-    fig.add_trace(go.Scatter(x=x, y=y2, line=dict(color='#00E5A0', width=4), fill='tonexty', fillcolor='rgba(0,229,160,0.1)', name='FlowBio AI'))
-    fig.update_layout(paper_bgcolor='#060B11', plot_bgcolor='#0D1520', font=dict(color='#64748B'), margin=dict(t=10, b=10, l=10, r=10))
-    
-    img_bytes = fig.to_image(format="png", width=800, height=400, scale=2)
-    pdf.image(BytesIO(img_bytes), x=15, y=pdf.get_y(), w=180)
-    pdf.ln(100)
+    pdf.ln(5)
 
+    # Tabla Técnica de KPIs
+    pdf.set_fill_color(13, 21, 32)
+    pdf.set_text_color(0, 229, 160)
     pdf.set_font('Helvetica', 'B', 12)
-    pdf.cell(0, 10, 'ENGINEERING INSIGHTS:', 0, 1)
-    pdf.set_font('Helvetica', '', 10)
-    pdf.multi_cell(0, 8, f"- Viscosidad Plastica: {data.get('visc_p')} cP\n- Yield Point: {data.get('yield_p')} lb/100ft2\n- Incremental EUR: {data.get('eur'):,} bbls\n- Payback Proyectado: {data.get('payback')} Meses")
+    pdf.cell(190, 12, ' RESULTADOS DE INGENIERIA (5-AGENT CONSENSUS)', 0, 1, 'L', True)
     
-    return pdf.output(dest='S')
+    pdf.set_font('Helvetica', '', 11)
+    pdf.set_text_color(255, 255, 255)
+    
+    stats = [
+        ["VISCOSIDAD PLASTICA (PV)", f"{data.get('visc_p')} cP"],
+        ["YIELD POINT (YP)", f"{data.get('yield_p')} lb/100ft2"],
+        ["AHORRO OPEX PROYECTADO", f"${data.get('ahorro'):,}"],
+        ["MEJORA DE BARRIDO", f"+{data.get('mejora')}%"],
+        ["INCREMENTAL TOTAL (EUR)", f"{data.get('eur'):,} bbls"],
+        ["PAYBACK INVERSION", f"{data.get('payback')} Meses"]
+    ]
+
+    for item in stats:
+        pdf.cell(100, 12, f" {item[0]}", 1, 0, 'L')
+        pdf.cell(90, 12, f" {item[1]}", 1, 1, 'R')
+
+    pdf.ln(15)
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.cell(0, 10, 'INTERPRETACION TECNICA:', 0, 1)
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_text_color(139, 168, 192)
+    
+    txt = (f"La simulacion PIML para el pozo {well_name} confirma que el uso de Na-CMC mantiene "
+           f"una viscosidad de {data.get('visc_p')} cP, evitando la canalización del agua. "
+           f"Con un incremento de {data.get('eur'):,} barriles, el retorno de inversión es de {data.get('payback')} meses.")
+    pdf.multi_cell(0, 8, txt)
+    
+    return pdf.output(dest='S').encode('latin-1')
 
 # ══════════════════════════════════════════════════════
-# 3. CONEXIÓN AWS Y LÓGICA
+# 3. LÓGICA DE NAVEGACIÓN Y DASHBOARD
 # ══════════════════════════════════════════════════════
 @st.cache_data(ttl=1)
 def load_data_from_s3():
@@ -116,7 +128,7 @@ if st.session_state.screen == 'splash':
     st.markdown("""
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 65vh; text-align: center;">
             <h1 style='font-family:Syne; font-size:120px; color:white; margin-bottom:0;'>FlowBio<span style='color:#00E5A0'>.</span></h1>
-            <p style='color:#64748B; letter-spacing:10px; font-size:14px; margin-bottom:0;'>AGENT INTELLIGENCE OS</p>
+            <p style='color:#64748B; letter-spacing:10px; font-size:14px; margin-bottom:40px;'>AGENT INTELLIGENCE OS</p>
         </div>
     """, unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1.2, 1])
@@ -129,11 +141,12 @@ if st.session_state.screen == 'splash':
                 st.rerun()
 
 elif st.session_state.screen == 'dash':
-    st.markdown("<div style='padding: 2rem 3rem;'><h2 style='font-family:Syne; color:white;'>Command Center</h2>", unsafe_allow_html=True)
+    st.markdown("<div style='padding: 2rem 3rem;'><h2 style='font-family:Syne; color:white; margin-bottom:20px;'>Command Center</h2>", unsafe_allow_html=True)
     wells = list(st.session_state.all_data.keys())
     selected_well = st.selectbox("Activo analizado:", wells)
     d = st.session_state.all_data[selected_well]
     
+    # KPIs
     k1, k2, k3, k4 = st.columns(4)
     with k1: st.markdown(f'<div class="kpi-box"><p class="kpi-label">AHORRO OPEX</p><p class="kpi-value">${d["ahorro"]:,}</p></div>', unsafe_allow_html=True)
     with k2: st.markdown(f'<div class="kpi-box" style="border-top-color:#3B82F6;"><p class="kpi-label">MEJORA BARRIDO</p><p class="kpi-value">+{d["mejora"]}%</p></div>', unsafe_allow_html=True)
@@ -142,6 +155,7 @@ elif st.session_state.screen == 'dash':
 
     cl, cr = st.columns([2.3, 1.7])
     with cl:
+        # Gráfica interactiva de declinación
         chart_html = f"""<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script><div id="plot" style="height:500px; border-radius:12px; background:#0D1520; margin-top:20px; border:1px solid rgba(255,255,255,0.05);"></div>
         <script>
             var x = Array.from({{length:40}}, (_,i)=>i); var base = 350; var mej = {d['mejora']} / 100;
@@ -153,17 +167,22 @@ elif st.session_state.screen == 'dash':
         
     with cr:
         st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
-        st.markdown(f"""
-        <div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); height:500px; overflow-y:auto;">
-            <p style="color:#00E5A0; font-weight:800; font-size:12px; margin-bottom:15px;">🧠 ENGINEERING INSIGHTS</p>
-            <p style="font-family: 'DM Mono'; font-size: 11px; color: #22D3EE;">VISCOSIDAD (PV): {d.get('visc_p')} cP</p>
-            <p style="font-family: 'DM Mono'; font-size: 11px; color: #22D3EE;">YIELD POINT (YP): {d.get('yield_p')} lb/100ft2</p>
-            <hr style="opacity:0.1">
-            <p style="color:#64748B; font-size:10px; text-transform: uppercase;">INCREMENTAL PROYECTADO:</p>
-            <p style="color:#00E5A0; font-size:32px; font-weight:800; margin:0;">{d['eur']:,} bbls</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Insights TÉCNICOS Premium
+        pv_val = d.get('visc_p', '95.49')
+        yp_val = d.get('yield_p', '28.1')
+        eur_val = f"{d.get('eur', 0):,}"
+
+        insight_html = f"""<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); height:450px; overflow-y:auto; margin-bottom:20px;">
+<p style="color:#00E5A0; font-weight:800; font-size:12px; margin-bottom:15px;">🧠 ENGINEERING INSIGHTS</p>
+<p style="font-family: 'DM Mono'; font-size: 14px; color: #22D3EE;">VISCOSIDAD (PV): {pv_val} cP</p>
+<p style="font-family: 'DM Mono'; font-size: 14px; color: #22D3EE;">YIELD POINT (YP): {yp_val} lb/100ft2</p>
+<hr style="opacity:0.1">
+<p style="color:#64748B; font-size:10px; text-transform: uppercase;">INCREMENTAL PROYECTADO:</p>
+<p style="color:#00E5A0; font-size:38px; font-weight:800; margin:0;">{eur_val} <span style="font-size:14px; color:#64748B;">bbls</span></p>
+</div>"""
+        st.write(insight_html, unsafe_allow_html=True)
         
+        # Botón de Descarga Blindado
         pdf_data = create_pdf_report(selected_well, d)
         st.download_button("📥 DESCARGAR REPORTE PDF CORPORATIVO", data=pdf_data, file_name=f"FlowBio_{selected_well}.pdf", mime="application/pdf")
 
