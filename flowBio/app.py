@@ -90,3 +90,12 @@ else:
     with cr:
         st.markdown(f"""<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3);">
             <p style="color:#00E5A0; font-weight:800; font-
+# Reemplaza el bloque problemático con esto:
+        insight_html = (
+            f'<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3);">'
+            f'<p style="color:#00E5A0; font-weight:800; font-size:12px;">🧠 ENGINEERING INSIGHTS</p>'
+            f'<p style="font-family: \'DM Mono\'; font-size: 14px; color: #22D3EE;">PV: {d["visc_p"]} cP | YP: {d["yield_p"]} lb/ft2</p>'
+            f'<p style="color:#64748B; font-size:10px;">INCREMENTAL: {d["eur"]:,} bbls</p>'
+            '</div>'
+        )
+        st.markdown(insight_html, unsafe_allow_html=True)
