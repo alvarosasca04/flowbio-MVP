@@ -31,15 +31,6 @@ st.markdown("""
     }
     .stButton > button:hover { box-shadow: 0 0 25px rgba(0,229,160,0.4); transform: translateY(-2px); }
     
-    /* Botón especial para volver al inicio */
-    .btn-return > div > button {
-        background: transparent !important; color: #64748B !important;
-        border: 1px solid #1A2A3A !important;
-    }
-    .btn-return > div > button:hover {
-        background: #1A2A3A !important; color: white !important; border-color: #00E5A0 !important;
-    }
-    
     div[data-baseweb="select"] > div {
         background-color: #0D1520; border: 1px solid #00E5A0; color: white; border-radius: 8px;
     }
@@ -165,79 +156,4 @@ elif st.session_state.screen == 'dash':
     with k2: 
         st.markdown('<div class="kpi-box" style="border-top-color:#3B82F6;"><p class="kpi-label">MEJORA PROYECTADA</p><p class="kpi-value">+' + f"{d['mejora']:.1f}" + '%</p></div>', unsafe_allow_html=True)
     with k3: 
-        st.markdown('<div class="kpi-box" style="border-top-color:#22D3EE;"><p class="kpi-label">FEE MENSUAL USD</p><p class="kpi-value" style="color:#22D3EE;">$' + f"{d['fee']:,.0f}" + '</p></div>', unsafe_allow_html=True)
-    with k4: 
-        st.markdown('<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">ESG CO2 EVITADO</p><p class="kpi-value" style="color:#F59E0B;">' + str(d['co2']) + 't</p></div>', unsafe_allow_html=True)
-
-    # --- GRÁFICA Y ARGUMENTOS DE VENTA ---
-    cl, cr = st.columns([2.5, 1.5])
-    with cl:
-        HTML_CHART = """
-        <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-        <div id="plot" style="height:500px; border-radius:12px; background:#0D1520; border:1px solid rgba(255,255,255,0.05); margin-top:20px;"></div>
-        <script>
-            var x = Array.from({length:40}, (_,i)=>i);
-            var base = __BASE_BPD__;
-            var mejora = __MEJORA_PCT__;
-            var y1 = x.map(i => base * Math.exp(-0.06*i));
-            var y2 = x.map(i => i<5 ? y1[i] : y1[i] + (base * mejora * Math.exp(-0.015*(i-5))));
-            Plotly.newPlot('plot', [
-                {x:x, y:y1, type:'scatter', line:{color:'#EF4444', dash:'dot', width:2}, name:'Base (HPAM)'},
-                {x:x, y:y2, type:'scatter', line:{color:'#00E5A0', width:4}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.1)', name:'FlowBio Na-CMC'}
-            ], { 
-                paper_bgcolor:'rgba(0,0,0,0)', 
-                plot_bgcolor:'rgba(0,0,0,0)', 
-                font:{color:'#64748B', family:'DM Mono'}, 
-                margin:{t:30, b:40, l:50, r:20}, 
-                xaxis:{gridcolor:'#1A2A3A'}, 
-                yaxis:{gridcolor:'#1A2A3A'},
-                hoverlabel: {bgcolor: '#060B11', font: {color: '#00E5A0'}, bordercolor: '#00E5A0'} 
-            }, {responsive: true, displayModeBar: false});
-        </script>
-        """.replace("__BASE_BPD__", str(d['bpd'])).replace("__MEJORA_PCT__", str(d['mejora']/100))
-        components.html(HTML_CHART, height=540)
-        
-    with cr:
-        html_insights = (
-            '<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); margin-top:20px; height:500px; display:flex; flex-direction:column; justify-content:space-between;">'
-            '<p style="font-size:12px; color:#00E5A0; font-weight:800; letter-spacing:1px; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">🧠 ENGINEERING INSIGHTS</p>'
-            
-            '<div style="margin-bottom:15px;">'
-            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Ratio de Movilidad (M)</p>'
-            '<p style="font-family:\'Syne\'; font-size:26px; color:#22D3EE; margin:0;">' + str(d['m_ratio']) + '</p>'
-            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Al ser < 1, previene la canalización de agua (viscous fingering), forzando un barrido uniforme del crudo en la roca.</p>'
-            '</div>'
-            
-            '<div style="margin-bottom:15px;">'
-            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Índice de Flujo (n)</p>'
-            '<p style="font-family:\'Syne\'; font-size:26px; color:#F59E0B; margin:0;">' + str(d['n']) + '</p>'
-            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Comportamiento pseudoplástico: fluye fácil cerca del pozo (ahorra energía) y espesa en el yacimiento.</p>'
-            '</div>'
-            
-            '<div style="margin-bottom:15px;">'
-            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Reservas Adicionales (5A)</p>'
-            '<p style="font-family:\'Syne\'; font-size:26px; color:#00E5A0; margin:0;">' + f"{d['eur']:,.0f}" + ' <span style="font-size:14px; color:#64748B;">bbls</span></p>'
-            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Petróleo incremental directo a la cuota de producción proyectada por la alta eficiencia de barrido del Na-CMC.</p>'
-            '</div>'
-            '</div>'
-        )
-        st.markdown(html_insights, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        pdf_b64 = generate_pdf_base64(d, selected_well)
-        safe_filename = selected_well[:10].replace(" ", "_")
-        
-        btn_pdf = '<a href="data:application/pdf;base64,' + pdf_b64 + '" download="Reporte_' + safe_filename + '.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 DESCARGAR REPORTE DEL POZO</button></a>'
-        st.markdown(btn_pdf, unsafe_allow_html=True)
-    
-    # --- BOTÓN DE INICIO GLOBAL (OCUPA TODO EL ANCHO ABAJO) ---
-    st.markdown("<hr style='opacity:0.1; margin-top:30px; margin-bottom:20px;'>", unsafe_allow_html=True)
-    
-    # Usando un layout de 3 columnas para centrar el botón, aplicándole una clase CSS especial
-    _, col_center, _ = st.columns([1, 2, 1])
-    with col_center:
-        st.markdown('<div class="btn-return">', unsafe_allow_html=True)
-        if st.button("🏠 VOLVER AL INICIO / DESCONECTAR", use_container_width=True):
-            st.session_state.screen = 'splash'
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div class="kpi-box" style="border-top-color:#22D3EE;"><p class="kpi-label">FEE MENSUAL USD</p><p class="kpi-value
