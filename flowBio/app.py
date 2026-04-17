@@ -198,7 +198,6 @@ elif st.session_state.screen == 'dash':
         components.html(HTML_CHART, height=540)
         
     with cr:
-        # AQUI ESTA LA MAGIA: Desglose del "Por qué" para vender la tecnología
         html_insights = (
             '<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); margin-top:20px; height:500px; display:flex; flex-direction:column; justify-content:space-between;">'
             '<p style="font-size:12px; color:#00E5A0; font-weight:800; letter-spacing:1px; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">🧠 ENGINEERING INSIGHTS</p>'
@@ -220,13 +219,20 @@ elif st.session_state.screen == 'dash':
             '<p style="font-family:\'Syne\'; font-size:26px; color:#00E5A0; margin:0;">' + f"{d['eur']:,.0f}" + ' <span style="font-size:14px; color:#64748B;">bbls</span></p>'
             '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Petróleo incremental directo a la cuota de producción proyectada por la eficiencia de barrido del Na-CMC.</p>'
             '</div>'
-            
             '</div>'
         )
         st.markdown(html_insights, unsafe_allow_html=True)
         
-    # Botón de Reporte en todo el ancho para cerrar
-    pdf_b64 = generate_pdf_base64(d, selected_well)
-    safe_filename = selected_well[:10].replace(" ", "_")
-    btn_html = '<a href="data:application/pdf;base64,' + pdf_b64 + '" download="Reporte_' + safe_filename + '.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer; margin-top:10px;">📥 DESCARGAR REPORTE DEL POZO</button></a>'
-    st.markdown(btn_html, unsafe_allow_html=True)
+        # Botones de Acción (Descarga y Volver al Inicio)
+        st.markdown("<br>", unsafe_allow_html=True)
+        pdf_b64 = generate_pdf_base64(d, selected_well)
+        safe_filename = selected_well[:10].replace(" ", "_")
+        btn_html = '<a href="data:application/pdf;base64,' + pdf_b64 + '" download="Reporte_' + safe_filename + '.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 DESCARGAR REPORTE DEL POZO</button></a>'
+        st.markdown(btn_html, unsafe_allow_html=True)
+        
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+        
+        # BOTÓN RESTAURADO
+        if st.button("🏠 VOLVER AL INICIO"):
+            st.session_state.screen = 'splash'
+            st.rerun()
