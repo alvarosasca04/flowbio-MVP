@@ -34,10 +34,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════
-# 2. CONEXIÓN REAL A LOS AGENTES (AWS S3)
+# 2. CONEXIÓN REAL A S3 (DATOS DE AGENTES)
 # ══════════════════════════════════════════════════════
-def load_data_from_agents():
-    """Lee el JSON generado por los agentes en Jupyter desde S3"""
+def load_data_from_s3():
+    """Conecta con el archivo JSON que tus agentes acaban de generar en Jupyter"""
     try:
         s3 = boto3.client(
             's3',
@@ -46,25 +46,27 @@ def load_data_from_agents():
             region_name="us-east-2"
         )
         bucket = "flowbio-data-lake-v2-627807503177-us-east-2-an"
-        key = "agentes/dashboard_data.json" # Archivo que genera tu Jupyter
+        key = "agentes/dashboard_data.json" 
         
         response = s3.get_object(Bucket=bucket, Key=key)
         return json.loads(response['Body'].read().decode('utf-8'))
     except Exception as e:
-        st.error(f"Error: No se pudo conectar con los Agentes. Asegúrate de que Jupyter haya subido el archivo dashboard_data.json a S3.")
+        st.error(f"Error de Sincronización: Asegúrate de que Jupyter haya finalizado el proceso y subido el archivo.")
         return None
 
 # ══════════════════════════════════════════════════════
-# 3. NAVEGACIÓN
+# 3. NAVEGACIÓN Y LÓGICA
 # ══════════════════════════════════════════════════════
-if 'screen' not in st.session_state: st.session_state.screen = 'splash'
+if 'screen' not in st.session_state: 
+    st.session_state.screen = 'splash'
 
 if st.session_state.screen == 'splash':
     st.markdown("<br><br><br><h1 style='text-align:center; font-family:Syne; font-size:100px; color:white;'>FlowBio.</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align:center; color:#64748B; letter-spacing:5px;'>AGENT INTELLIGENCE OS</p><br>", unsafe_allow_html=True)
+    
     _, col_btn, _ = st.columns([1, 1, 1])
-    if col_btn.button("SINCRONIZAR CON AGENTES"):
-        data = load_data_from_agents()
+    if col_btn.button("SINCRONIZAR CON AGENTES (S3)"):
+        data = load_data_from_s3()
         if data:
             st.session_state.all_data = data
             st.session_state.screen = 'dash'
@@ -73,19 +75,19 @@ if st.session_state.screen == 'splash':
 elif st.session_state.screen == 'dash':
     st.markdown("<h2 style='font-family:Syne; color:white;'>Command Center</h2>", unsafe_allow_html=True)
     
-    # BUSCADOR REAL: Solo muestra pozos que los agentes analizaron
+    # BUSCADOR REAL: Alimentado por el JSON de S3
     wells = list(st.session_state.all_data.keys())
     selected_well = st.selectbox("🔍 Buscar pozo analizado por IA:", wells)
     d = st.session_state.all_data[selected_well]
     
-    # Mostrar KPIs analizados por los agentes
+    # Mostrar KPIs reales de los Agentes
     k1, k2, k3, k4 = st.columns(4)
     with k1: st.markdown(f'<div class="kpi-box"><p class="kpi-label">AHORRO OPEX</p><p class="kpi-value">${d["ahorro"]:,}</p></div>', unsafe_allow_html=True)
     with k2: st.markdown(f'<div class="kpi-box"><p class="kpi-label">MEJORA BARRIDO</p><p class="kpi-value">+{d["mejora"]}%</p></div>', unsafe_allow_html=True)
     with k3: st.markdown(f'<div class="kpi-box"><p class="kpi-label">RATIO MOVILIDAD (M)</p><p class="kpi-value">{d["m_ratio"]}</p></div>', unsafe_allow_html=True)
     with k4: st.markdown(f'<div class="kpi-box"><p class="kpi-label">CO2 EVITADO</p><p class="kpi-value">{d["co2"]}t</p></div>', unsafe_allow_html=True)
 
-    # Gráfica Dinámica (JavaScript) centrada en el pozo
+    # Gráfica Dinámica
     cl, cr = st.columns([2.5, 1.5])
     with cl:
         HTML_CHART = """
@@ -112,11 +114,14 @@ elif st.session_state.screen == 'dash':
             <p style="color:white; font-size:14px;">{d['recomendacion']}</p>
             <p style="color:#64748B; font-size:10px; margin-top:20px;">INCREMENTAL PROYECTADO (EUR)</p>
             <p style="color:#00E5A0; font-size:28px; font-weight:800;">{d['eur']:,} <span style="font-size:12px;">bbls</span></p>
+            <p style="color:#64748B; font-size:10px; margin-top:20px;">PAYBACK ESTIMADO</p>
+            <p style="color:white; font-size:20px; font-weight:600;">{d['payback']} meses</p>
         </div>""", unsafe_allow_html=True)
 
-    # Botones de Acción centrados
+    # Botón de desconexión
     _, c_mid, _ = st.columns([1, 2, 1])
     with c_mid:
         st.write("")
-        if st.button("🏠 VOLVER AL INICIO / DESCONECTAR"):
-            st.session_state.screen = 'splash'; st.rerun()
+        if st.button("🏠 VOLVER AL INICIO"):
+            st.session_state.screen = 'splash'
+            st.rerun()
