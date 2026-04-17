@@ -5,17 +5,30 @@ import boto3
 import base64
 
 # ══════════════════════════════════════════════════════
-# 1. IDENTIDAD VISUAL PREMIUM
+# 1. IDENTIDAD VISUAL Y ESTILOS MEJORADOS
 # ══════════════════════════════════════════════════════
 st.set_page_config(page_title="FlowBio Subsurface OS", page_icon="🧬", layout="wide")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Syne:wght@700;800&family=DM+Mono&display=swap');
+    
+    /* Eliminar elementos por defecto de Streamlit */
     [data-testid="stHeader"], [data-testid="stSidebar"], footer { display: none !important; }
     .stApp { background: #060B11; }
     .block-container { padding: 2rem 3rem !important; }
-    
+
+    /* Contenedor de la Splash Screen */
+    .splash-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        height: 60vh; /* Ajuste para centrar verticalmente */
+    }
+
+    /* KPIs del Dashboard */
     .kpi-box {
         background: rgba(13, 21, 32, 0.8); border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 12px; padding: 22px; border-top: 4px solid #00E5A0;
@@ -23,13 +36,27 @@ st.markdown("""
     .kpi-label { font-family: 'Inter'; font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
     .kpi-value { font-family: 'Syne'; font-size: 32px; font-weight: 800; color: #fff; margin: 5px 0; }
 
+    /* BOTÓN CENTRADO Y PREMIUM */
     .stButton > button {
-        background: #00E5A0 !important; color: #060B11 !important;
-        font-family: 'Syne' !important; font-weight: 800 !important;
-        border-radius: 8px !important; padding: 18px 30px !important; width: 100%;
-        border: none !important; transition: 0.3s; text-transform: uppercase;
+        background: #00E5A0 !important;
+        color: #060B11 !important;
+        font-family: 'Syne' !important;
+        font-weight: 800 !important;
+        border-radius: 8px !important;
+        padding: 18px 45px !important;
+        border: none !important;
+        transition: 0.3s all ease;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        display: block;
+        margin: 0 auto !important; /* CENTRADO TOTAL */
     }
-    
+    .stButton > button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 40px rgba(0, 229, 160, 0.4);
+    }
+
+    /* Selectores de pozo */
     div[data-baseweb="select"] > div {
         background-color: #0D1520; border: 1px solid #00E5A0; color: white; border-radius: 8px;
     }
@@ -58,21 +85,28 @@ def load_data_from_s3():
 # ══════════════════════════════════════════════════════
 if 'screen' not in st.session_state: st.session_state.screen = 'splash'
 
+# --- PANTALLA DE INICIO (SPLASH) ---
 if st.session_state.screen == 'splash':
-    st.markdown("<br><br><br><h1 style='text-align:center; font-family:Syne; font-size:110px; color:white;'>FlowBio<span style='color:#00E5A0'>.</span></h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#64748B; letter-spacing:8px;'>SUBSURFACE INTELLIGENCE OS</p><br>", unsafe_allow_html=True)
-    _, col_btn, _ = st.columns([1, 1.2, 1])
-    if col_btn.button("Sincronizar con S3"):
+    st.markdown("""
+        <div class="splash-container">
+            <h1 style='font-family:Syne; font-size:120px; color:white; margin-bottom:0;'>FlowBio<span style='color:#00E5A0'>.</span></h1>
+            <p style='color:#64748B; letter-spacing:10px; font-size:14px; margin-bottom:40px;'>AGENT INTELLIGENCE OS</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("SINCROZINAR CON NUBE S3"):
         data = load_data_from_s3()
         if data:
             st.session_state.all_data = data
             st.session_state.screen = 'dash'
             st.rerun()
 
+# --- PANTALLA DE DASHBOARD (COMMAND CENTER) ---
 elif st.session_state.screen == 'dash':
-    st.markdown("<h2 style='font-family:Syne; color:white;'>Command Center</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='font-family:Syne; color:white; margin-bottom:20px;'>Command Center</h2>", unsafe_allow_html=True)
+    
     wells = list(st.session_state.all_data.keys())
-    selected_well = st.selectbox("Pozo analizado por agentes:", wells)
+    selected_well = st.selectbox("Seleccione pozo analizado por IA:", wells)
     d = st.session_state.all_data[selected_well]
     
     # --- KPIs SUPERIORES ---
@@ -82,11 +116,11 @@ elif st.session_state.screen == 'dash':
     with k3: st.markdown(f'<div class="kpi-box" style="border-top-color:#22D3EE;"><p class="kpi-label">SUCCESS FEE</p><p class="kpi-value">${d["fee"]:,}</p></div>', unsafe_allow_html=True)
     with k4: st.markdown(f'<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">CO2 EVITADO</p><p class="kpi-value">{d["co2"]}t</p></div>', unsafe_allow_html=True)
 
-    # --- CONTENIDO PRINCIPAL (GRÁFICA E INSIGHTS) ---
+    # --- CONTENIDO TÉCNICO ---
     cl, cr = st.columns([2.3, 1.7])
     
     with cl:
-        # Gráfica Dinámica
+        # Gráfica Dinámica (Plotly)
         chart_html = f"""<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script><div id="plot" style="height:500px; border-radius:12px; background:#0D1520; margin-top:20px; border:1px solid rgba(255,255,255,0.05);"></div>
         <script>
             var x = Array.from({{length:40}}, (_,i)=>i); var base = 350; var mej = {d['mejora']} / 100;
@@ -98,14 +132,12 @@ elif st.session_state.screen == 'dash':
         
     with cr:
         st.markdown("<div style='height:20px;'></div>", unsafe_allow_html=True)
-        
-        # 1. Extraemos los valores primero para que el HTML sea una cadena limpia
+        # 🧪 EXPLICACIÓN TÉCNICA DE DATOS DUROS 🧪
         pv_val = d.get('visc_p', '95.49')
         yp_val = d.get('yield_p', '28.1')
         pb_val = d.get('payback', '1.0')
         eur_val = f"{d.get('eur', 0):,}"
 
-        # 2. Definimos el HTML sin indentaciones extrañas para evitar errores de renderizado
         insight_html = f"""<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); height:500px; overflow-y:auto;">
 <p style="color:#00E5A0; font-weight:800; font-size:12px; margin-bottom:15px;">🧠 ENGINEERING INSIGHTS (5-AGENT CONSENSUS)</p>
 <div style="background: rgba(26, 42, 58, 0.4); border-left: 3px solid #22D3EE; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
@@ -123,13 +155,10 @@ elif st.session_state.screen == 'dash':
 <p style="color:#64748B; font-size:10px; margin-top:15px; text-transform: uppercase;">INCREMENTAL PROYECTADO (EUR):</p>
 <p style="color:#00E5A0; font-size:32px; font-weight:800; margin:0;">{eur_val} <span style="font-size:12px; color:#64748B;">bbls</span></p>
 </div>"""
-        
-        # 3. Renderizado forzado con st.write y permiso HTML
         st.write(insight_html, unsafe_allow_html=True)
 
-    # --- BOTÓN DE REINICIO ---
+    # --- BOTÓN DE SALIDA ---
     st.markdown("<br><hr style='opacity:0.1;'><br>", unsafe_allow_html=True)
-    _, c_mid, _ = st.columns([1, 2, 1])
-    if c_mid.button("🏠 VOLVER AL INICIO"):
+    if st.button("🏠 CERRAR SESIÓN"):
         st.session_state.screen = 'splash'
         st.rerun()
