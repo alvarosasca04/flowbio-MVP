@@ -38,7 +38,7 @@ st.markdown("""
 if 'screen' not in st.session_state: st.session_state.screen = 'splash'
 
 # ══════════════════════════════════════════════════════
-# 2. BASE DE DATOS DE AGENTES (POZOS SIMULADOS)
+# 2. BASE DE DATOS JUPYTER (10 POZOS SIMULADOS)
 # ══════════════════════════════════════════════════════
 AGENT_DATA = {
     "Pozo 15/17-1 (Central North Sea)": {
@@ -74,14 +74,11 @@ AGENT_DATA = {
 }
 
 # ══════════════════════════════════════════════════════
-# 3. MOTOR DE REPORTE PDF (DARK MODE PREMIUM)
+# 3. MOTOR DE REPORTE PDF (DARK MODE)
 # ══════════════════════════════════════════════════════
 class FlowBioReport(FPDF):
     def header(self):
-        # Fondo oscuro para toda la página
-        self.set_fill_color(6, 11, 17) 
-        self.rect(0, 0, 210, 297, 'F') 
-        
+        self.set_fill_color(6, 11, 17); self.rect(0, 0, 210, 297, 'F') 
         self.set_xy(10, 12)
         self.set_font('Arial', 'B', 22); self.set_text_color(0, 229, 160)
         self.cell(0, 10, 'FlowBio AI Engine', 0, 1, 'L')
@@ -97,26 +94,18 @@ class FlowBioReport(FPDF):
         self.line(10, self.get_y(), 200, self.get_y()); self.ln(5)
 
     def draw_metric_card(self, label, value, x, y):
-        # Cajas oscuras con borde sutil (Estilo Dashboard)
         self.set_fill_color(13, 21, 32); self.set_draw_color(26, 42, 58)
         self.rect(x, y, 45, 22, 'FD')
-        
         self.set_xy(x, y + 4)
-        # Texto Verde Neón brillante
         self.set_font('Arial', 'B', 14); self.set_text_color(0, 229, 160)
-        safe_value = str(value).encode('ascii', 'ignore').decode('ascii')
-        self.cell(45, 8, safe_value, border=0, ln=0, align='C')
-        
+        self.cell(45, 8, str(value).encode('ascii', 'ignore').decode('ascii'), border=0, ln=0, align='C')
         self.set_xy(x, y + 13)
-        # Etiquetas en Gris Azulado
         self.set_font('Arial', '', 8); self.set_text_color(100, 116, 139)
-        safe_label = str(label).encode('ascii', 'ignore').decode('ascii')
-        self.cell(45, 5, safe_label, border=0, ln=0, align='C')
+        self.cell(45, 5, str(label).encode('ascii', 'ignore').decode('ascii'), border=0, ln=0, align='C')
 
 def generate_pdf_base64(d, nombre_pozo):
     pdf = FlowBioReport()
     pdf.add_page()
-    
     safe_nombre = str(nombre_pozo).encode('latin-1', 'ignore').decode('latin-1')
     pdf.set_font('Arial', 'B', 14); pdf.set_text_color(255, 255, 255)
     pdf.cell(0, 10, f"Activo Analizado: {safe_nombre}", 0, 1, 'L')
@@ -162,11 +151,14 @@ if st.session_state.screen == 'splash':
             st.rerun()
 
 elif st.session_state.screen == 'dash':
+    # --- SIDEBAR: BUSCADOR EXPLÍCITO ---
     st.sidebar.markdown("<h3 style='font-family:Syne; color:#00E5A0;'>🧬 DATA LAKE</h3>", unsafe_allow_html=True)
+    st.sidebar.markdown("<p style='font-size:13px; color:#8BA8C0; font-weight:600;'>⌨️ Haz clic y escribe para buscar:</p>", unsafe_allow_html=True)
     
     selected_well = st.sidebar.selectbox(
-        "🔍 Buscar y Seleccionar Pozo:",
-        list(AGENT_DATA.keys())
+        "", 
+        list(AGENT_DATA.keys()),
+        label_visibility="collapsed"
     )
     d = AGENT_DATA[selected_well]
     
@@ -175,15 +167,18 @@ elif st.session_state.screen == 'dash':
         st.session_state.screen = 'splash'
         st.rerun()
 
+    # --- CABECERA ---
     st.markdown("<h2 style='font-family:Syne; margin-bottom:0px; color:white;'>Command Center</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color:#22D3EE; font-family:\"DM Mono\"; font-size:14px; margin-bottom:20px;'>[" + str(d['label']) + "] ➔ " + str(selected_well) + "</p>", unsafe_allow_html=True)
     
+    # --- KPIs ---
     k1, k2, k3, k4 = st.columns(4)
     with k1: st.markdown('<div class="kpi-box"><p class="kpi-label">AHORRO OPEX / AÑO</p><p class="kpi-value" style="color:#00E5A0;">$' + f"{d['ahorro']:,.0f}" + '</p></div>', unsafe_allow_html=True)
     with k2: st.markdown('<div class="kpi-box" style="border-top-color:#3B82F6;"><p class="kpi-label">MEJORA PROYECTADA</p><p class="kpi-value">+' + f"{d['mejora']:.1f}" + '%</p></div>', unsafe_allow_html=True)
     with k3: st.markdown('<div class="kpi-box" style="border-top-color:#22D3EE;"><p class="kpi-label">FEE MENSUAL USD</p><p class="kpi-value" style="color:#22D3EE;">$' + f"{d['fee']:,.0f}" + '</p></div>', unsafe_allow_html=True)
     with k4: st.markdown('<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">ESG CO2 EVITADO</p><p class="kpi-value" style="color:#F59E0B;">' + str(d['co2']) + 't</p></div>', unsafe_allow_html=True)
 
+    # --- GRÁFICA Y ARGUMENTOS DE VENTA ---
     cl, cr = st.columns([2.5, 1.5])
     with cl:
         HTML_CHART = """
@@ -229,6 +224,7 @@ elif st.session_state.screen == 'dash':
         )
         st.markdown(html_insights, unsafe_allow_html=True)
         
+        # --- BOTONES DE DESCARGA Y REGRESO ---
         st.markdown("<br>", unsafe_allow_html=True)
         pdf_b64 = generate_pdf_base64(d, selected_well)
         safe_filename = selected_well[:10].replace(" ", "_")
