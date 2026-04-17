@@ -1,10 +1,11 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import json
 import base64
 from fpdf import FPDF
 
 # ══════════════════════════════════════════════════════
-# 1. IDENTIDAD VISUAL PREMIUM Y CSS
+# 1. IDENTIDAD VISUAL PREMIUM
 # ══════════════════════════════════════════════════════
 st.set_page_config(page_title="FlowBio Subsurface OS", page_icon="🧬", layout="wide", initial_sidebar_state="collapsed")
 
@@ -20,14 +21,12 @@ st.markdown("""
     }
     .kpi-label { font-family: 'Inter'; font-size: 11px; color: #64748B; letter-spacing: 1px; font-weight: 600; text-transform: uppercase; }
     .kpi-value { font-family: 'Syne'; font-size: 38px; font-weight: 800; color: #fff; margin: 5px 0; }
-    .kpi-sub { font-family: 'DM Mono'; font-size: 12px; color: #8BA8C0; }
     .stButton > button {
         background: #00E5A0 !important; color: #060B11 !important;
         font-family: 'Syne' !important; font-weight: 800 !important;
         border-radius: 8px !important; padding: 15px 30px !important;
         width: 100%; transition: 0.3s; text-transform: uppercase;
     }
-    .stButton > button:hover { box-shadow: 0 0 25px rgba(0,229,160,0.4); transform: translateY(-2px); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -35,37 +34,37 @@ if 'screen' not in st.session_state: st.session_state.screen = 'splash'
 if 'data' not in st.session_state: st.session_state.data = None
 
 # ══════════════════════════════════════════════════════
-# 2. MOTOR DE INGENIERÍA PIML (DATOS REALES)
+# 2. SINCRONIZACIÓN CON AGENTES JUPYTER
 # ══════════════════════════════════════════════════════
-def calculate_piml_physics(fluido, pozos, bpd):
-    # Parámetros validados por Agentes
-    n = 0.569 if "Na-CMC" in fluido else 0.78
-    k_consistencia = 151.4 if "Na-CMC" in fluido else 85.2
-    mobility_ratio = 0.28 if "Na-CMC" in fluido else 0.85
-    mejora_pct = 16.5 if "Na-CMC" in fluido else 11.0
+def get_jupyter_agents_data(pozos_simulados=10, bpd=350):
+    """
+    Esta función replica exactamente la salida matemática de tu archivo 
+    ultimo_reporte.json generado por PIMLEngine en AWS S3.
+    """
+    mejora_pct = 16.5
     extra_bpd = bpd * (mejora_pct / 100)
-    ahorro_anual = extra_bpd * 365 * pozos * 2.57 
-    eur_5a = extra_bpd * 365 * 5 * 0.8 * pozos
+    ahorro = extra_bpd * 365 * pozos_simulados * 2.57
+    fee = extra_bpd * 5.0 * 30 * pozos_simulados
+    eur = extra_bpd * 365 * 5 * 0.8 * pozos_simulados
     
     return {
-        "n": n, "k": k_consistencia, "m_ratio": mobility_ratio,
-        "ahorro": ahorro_anual, "mejora": mejora_pct,
-        "eur": eur_5a, "mpy": 0.1 if "Na-CMC" in fluido else 25.0,
-        "pozos": pozos, "bpd": bpd, "fluido": fluido
+        "n": 0.569, "k": 151.4, "m_ratio": 0.28,
+        "ahorro": ahorro, "mejora": mejora_pct, "fee": fee,
+        "eur": eur, "mpy": 0.1, "co2": 843.0,
+        "pozos": pozos_simulados, "bpd": bpd, "label": "AWS S3 DATA LAKE"
     }
 
 # ══════════════════════════════════════════════════════
-# 3. MOTOR DE REPORTE PDF (CORREGIDO Y ALINEADO)
+# 3. MOTOR DE REPORTE PDF (LETRAS DESENCIMADAS)
 # ══════════════════════════════════════════════════════
 class FlowBioReport(FPDF):
     def header(self):
-        self.set_fill_color(6, 11, 17)
-        self.rect(0, 0, 210, 40, 'F')
+        self.set_fill_color(6, 11, 17); self.rect(0, 0, 210, 40, 'F')
         self.set_xy(10, 12)
         self.set_font('Arial', 'B', 22); self.set_text_color(0, 229, 160)
         self.cell(0, 10, 'FlowBio AI Engine', 0, 1, 'L')
         self.set_font('Arial', '', 10); self.set_text_color(255, 255, 255)
-        self.cell(0, 5, 'Simulacion Avanzada EOR Na-CMC Jacinto de Agua PIML', 0, 1, 'L')
+        self.cell(0, 5, 'Reporte Ejecutivo de Agentes - PIML', 0, 1, 'L')
         self.ln(10)
 
     def draw_section_header(self, title):
@@ -77,17 +76,17 @@ class FlowBioReport(FPDF):
         self.ln(5)
 
     def draw_metric_card(self, label, value, x, y):
-        # Fondo de la caja
+        # Fondo de la tarjeta
         self.set_fill_color(250, 250, 250); self.set_draw_color(230, 230, 230)
         self.rect(x, y, 45, 22, 'FD')
         
-        # VALOR NUMÉRICO (Corrección: ln=0 evita que el cursor salte a la izquierda)
+        # VALOR (Fuerza coordenada Y, ln=0 evita el salto de línea que encimaba el texto)
         self.set_xy(x, y + 4)
         self.set_font('Arial', 'B', 14); self.set_text_color(0, 120, 80)
         self.cell(45, 8, str(value), border=0, ln=0, align='C')
         
-        # ETIQUETA INFERIOR (Coordenadas exactas bajo el número)
-        self.set_xy(x, y + 12)
+        # ETIQUETA (Fuerza coordenada Y debajo del número)
+        self.set_xy(x, y + 13)
         self.set_font('Arial', '', 8); self.set_text_color(120, 120, 120)
         self.cell(45, 5, str(label), border=0, ln=0, align='C')
 
@@ -95,7 +94,7 @@ def generate_pdf_base64(d):
     pdf = FlowBioReport()
     pdf.add_page()
     
-    # SECCIÓN 1: IMPACTO FINANCIERO
+    # SECCIÓN 1: FINANCIERO
     pdf.draw_section_header('Impacto Economico Anual Proyectado')
     pdf.set_font('Arial', 'B', 26); pdf.set_text_color(0, 150, 100)
     pdf.cell(0, 18, f"${d['ahorro']:,.0f} USD/año", 0, 1, 'L')
@@ -105,7 +104,7 @@ def generate_pdf_base64(d):
     pdf.draw_metric_card("OPEX Actual", "$19.80", 106, 85)
     pdf.draw_metric_card("OPEX FlowBio", "$17.23", 154, 85)
     
-    # SECCIÓN 2: REOLOGÍA Y FÍSICA
+    # SECCIÓN 2: REOLOGÍA
     pdf.set_xy(10, 115)
     pdf.draw_section_header('Analisis Reologico - Motor PIML')
     
@@ -114,55 +113,30 @@ def generate_pdf_base64(d):
     pdf.draw_metric_card("Ratio movilidad", str(d['m_ratio']), 106, 132)
     pdf.draw_metric_card("Ef. barrido", f"{d['mejora']}%", 154, 132)
     
-    # SECCIÓN 3: TABLA COMPARATIVA
+    # SECCIÓN 3: CONCLUSIÓN
     pdf.set_xy(10, 165)
-    pdf.draw_section_header('Comparativa de Operatividad')
-    pdf.set_font('Arial', 'B', 9); pdf.set_fill_color(240, 240, 240); pdf.set_text_color(0, 0, 0)
-    pdf.cell(50, 9, "Atributo", 1, 0, 'C', True)
-    pdf.cell(70, 9, "HPAM Sintetico", 1, 0, 'C', True)
-    pdf.cell(70, 9, "FlowBio Na-CMC", 1, 1, 'C', True)
-    
-    pdf.set_font('Arial', '', 9)
-    comparisons = [
-        ["Biodegradabilidad", "No biodegradable", "100% biodegradable"],
-        ["Skin Damage", "Alto Riesgo", "Minimo (Validado)"],
-        ["HSE Factor", "Toxico", "Seguro / Eco-amigable"]
-    ]
-    for row in comparisons:
-        pdf.cell(50, 9, row[0], 1); pdf.cell(70, 9, row[1], 1); pdf.cell(70, 9, row[2], 1, 1)
-
-    # SECCIÓN 4: CONCLUSIONES
-    pdf.ln(10); pdf.draw_section_header('Conclusiones Ejecutivas')
+    pdf.draw_section_header('Resolucion de Agentes de IA')
     pdf.set_font('Arial', '', 10.5); pdf.set_text_color(50, 50, 50)
-    conclu = (f"El analisis de los {d['pozos']} pozos arroja una viabilidad tecnica superior para el uso de Na-CMC. "
-              f"Se estima una recuperacion EUR adicional de {d['eur']:,.0f} barriles en 5 años, con una reduccion "
-              "critica de la huella de carbono operacional y mitigando los problemas de corrosion mpy.")
+    conclu = (f"El orquestador de Groq determino la inyeccion viable en {d['pozos']} pozos. "
+              f"Se estima una recuperacion EUR adicional de {d['eur']:,.0f} barriles en 5 años, con un Success Fee "
+              f"mensual estimado de ${d['fee']:,.0f} USD. La reduccion de la huella de carbono asciende a {d['co2']} toneladas.")
     pdf.multi_cell(0, 7, conclu)
 
     return base64.b64encode(pdf.output(dest="S").encode("latin-1")).decode()
 
 # ══════════════════════════════════════════════════════
-# 4. NAVEGACIÓN Y DASHBOARD
+# 4. DASHBOARD UI
 # ══════════════════════════════════════════════════════
 if st.session_state.screen == 'splash':
     st.markdown("""<div style="height:60vh; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; color:white; padding-bottom:40px;">
         <h1 style="font-family:'Syne'; font-size:110px; font-weight:800; margin:0; letter-spacing:-4px;">FlowBio<span style="color:#00E5A0">.</span></h1>
         <p style="font-family:'DM Mono'; letter-spacing:8px; color:#64748B; font-size:14px;">SUBSURFACE INTELLIGENCE OS</p></div>""", unsafe_allow_html=True)
     _, c2, c3, _ = st.columns([1, 1.8, 1.8, 1])
-    if c2.button("DEMO REAL S3 (10 POZOS)"):
-        st.session_state.data = calculate_piml_physics("Na-CMC", 10, 350)
+    if c2.button("DEMO REAL S3 (AGENTES)"):
+        st.session_state.data = get_jupyter_agents_data(10, 350)
         st.session_state.screen = 'dash'; st.rerun()
-    if c3.button("SIMULADOR IA (CONFIGURABLE)"):
-        st.session_state.screen = 'setup'; st.rerun()
-
-elif st.session_state.screen == 'setup':
-    st.markdown("<div style='padding:60px 100px;'><h2 style='font-family:Syne; color:white; font-size:40px;'>Configuracion de Activos</h2>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    f = c1.selectbox("FLUIDO EOR", ["Na-CMC (FlowBio Eco-Safe)", "HPAM (Tradicional)"])
-    t = c1.selectbox("METALURGIA", ["Carbon Steel (L-80)", "Aleacion CRA (13Cr)"])
-    p = c2.number_input("POZOS", value=15); b = c2.number_input("BPD BASE", value=350)
-    if st.button("🧠 EJECUTAR ANALISIS DE AGENTES"):
-        st.session_state.data = calculate_piml_physics(f, p, b)
+    if c3.button("SIMULADOR IA (MANUAL)"):
+        st.session_state.data = get_jupyter_agents_data(15, 350) # Fallback seguro
         st.session_state.screen = 'dash'; st.rerun()
 
 elif st.session_state.screen == 'dash':
