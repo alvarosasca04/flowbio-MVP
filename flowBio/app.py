@@ -87,9 +87,26 @@ else:
 
     # Gráfica e Insights
     cl, cr = st.columns([2.3, 1.7])
-    with cl:
-        st.markdown("<div id='plot' style='height:400px; background:#0D1520; border-radius:12px;'></div>", unsafe_allow_html=True)
+   with cl:
+        mejora_val = str(d['mejora'])
+        
+        # Juntamos el <div> y el <script> en un solo bloque para el iframe
+        chart_html = (
+            "<div id='plot' style='height:400px; background:#0D1520; border-radius:12px; width:100%; border: 1px solid rgba(255, 255, 255, 0.05);'></div>"
+            "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>"
+            "<script>"
+            "var x = Array.from({length:40}, (_,i)=>i);"
+            "var y1 = x.map(i => 350 * Math.exp(-0.06*i));"
+            "var y2 = x.map(i => i<5 ? y1[i] : y1[i] + (350 * " + mejora_val + " / 100 * Math.exp(-0.015*(i-5))));"
+            "var trace1 = {x:x, y:y1, name:'Base', line:{color:'#EF4444', dash:'dot'}};"
+            "var trace2 = {x:x, y:y2, name:'FlowBio AI', line:{color:'#00E5A0', width:4}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.1)'};"
+            "var layout = {paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#64748B'}, margin:{t:30, b:40, l:50, r:20}};"
+            "Plotly.newPlot('plot', [trace1, trace2], layout);"
+            "</script>"
+        )
+        
         import streamlit.components.v1 as components
+        components.html(chart_html, height=420)
         
         # Generación de la gráfica de forma blindada (Sin f-strings de triple comilla)
         mejora_val = str(d['mejora'])
