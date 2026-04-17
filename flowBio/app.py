@@ -33,7 +33,9 @@ def load_data_from_s3():
                           aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"], region_name="us-east-2")
         response = s3.get_object(Bucket="flowbio-data-lake-v2-627807503177-us-east-2-an", Key="agentes/dashboard_data.json")
         return json.loads(response['Body'].read().decode('utf-8'))
-    except: return None
+    except Exception as e:
+        st.error("Error al cargar datos. Verifica tus credenciales.")
+        return None
 
 def generate_corporate_pdf(well, d):
     pdf = FPDF()
@@ -41,14 +43,17 @@ def generate_corporate_pdf(well, d):
     pdf.set_fill_color(6, 11, 17); pdf.rect(0, 0, 210, 297, 'F')
     pdf.set_text_color(255, 255, 255)
     pdf.set_font('Arial', 'B', 20)
-    pdf.cell(0, 15, f'FlowBio Executive Report: {well}', 0, 1)
+    pdf.cell(0, 15, 'FlowBio Executive Report: ' + str(well), 0, 1)
     pdf.set_font('Arial', '', 12)
-    pdf.cell(0, 10, f'Fecha: {datetime.now().strftime("%Y-%m-%d")}', 0, 1)
+    pdf.cell(0, 10, 'Fecha: ' + datetime.now().strftime("%Y-%m-%d"), 0, 1)
     pdf.ln(10)
     pdf.set_fill_color(13, 21, 32)
-    for k, v in [["PV", f"{d.get('visc_p')} cP"], ["YP", f"{d.get('yield_p')} lb/ft2"], ["EUR", f"{d.get('eur'):,} bbls"], ["PAYBACK", f"{d.get('payback')} Meses"]]:
-        pdf.cell(95, 12, f" {k}", 1, 0, 'L', True)
-        pdf.cell(95, 12, f" {v}", 1, 1, 'R')
+    
+    eur_str = f"{d.get('eur'):,}"
+    
+    for k, v in [["PV", str(d.get('visc_p')) + " cP"], ["YP", str(d.get('yield_p')) + " lb/ft2"], ["EUR", eur_str + " bbls"], ["PAYBACK", str(d.get('payback')) + " Meses"]]:
+        pdf.cell(95, 12, " " + k, 1, 0, 'L', True)
+        pdf.cell(95, 12, " " + v, 1, 1, 'R')
     return pdf.output(dest='S').encode('latin-1')
 
 # ══════════════════════════════════════════════════════
@@ -64,38 +69,54 @@ if not st.session_state.auth:
         if st.button("SINCRONIZAR"):
             if pwd == "FlowBio2026":
                 st.session_state.all_data = load_data_from_s3()
-                st.session_state.auth = True
-                st.rerun()
+                if st.session_state.all_data:
+                    st.session_state.auth = True
+                    st.rerun()
 else:
     st.markdown("## Command Center")
     wells = list(st.session_state.all_data.keys())
     s_well = st.selectbox("Activo:", wells)
     d = st.session_state.all_data[s_well]
     
-    # KPIs (Limpios y directos)
+    # KPIs 
     k1, k2, k3, k4 = st.columns(4)
-    with k1: st.markdown(f'<div class="kpi-box"><p class="kpi-label">AHORRO</p><p class="kpi-value">${d["ahorro"]:,}</p></div>', unsafe_allow_html=True)
-    with k2: st.markdown(f'<div class="kpi-box"><p class="kpi-label">MEJORA</p><p class="kpi-value">+{d["mejora"]}%</p></div>', unsafe_allow_html=True)
-    with k3: st.markdown(f'<div class="kpi-box"><p class="kpi-label">FEE</p><p class="kpi-value">${d["fee"]:,}</p></div>', unsafe_allow_html=True)
-    with k4: st.markdown(f'<div class="kpi-box"><p class="kpi-label">PAYBACK</p><p class="kpi-value">{d["payback"]} Meses</p></div>', unsafe_allow_html=True)
+    with k1: st.markdown('<div class="kpi-box"><p class="kpi-label">AHORRO</p><p class="kpi-value">$' + f"{d['ahorro']:,}" + '</p></div>', unsafe_allow_html=True)
+    with k2: st.markdown('<div class="kpi-box"><p class="kpi-label">MEJORA</p><p class="kpi-value">+' + str(d['mejora']) + '%</p></div>', unsafe_allow_html=True)
+    with k3: st.markdown('<div class="kpi-box"><p class="kpi-label">FEE</p><p class="kpi-value">$' + f"{d['fee']:,}" + '</p></div>', unsafe_allow_html=True)
+    with k4: st.markdown('<div class="kpi-box"><p class="kpi-label">PAYBACK</p><p class="kpi-value">' + str(d['payback']) + ' Meses</p></div>', unsafe_allow_html=True)
 
-    # Gráfica e Insights + BOTÓN DE DESCARGA
+    # Gráfica e Insights
     cl, cr = st.columns([2.3, 1.7])
     with cl:
         st.markdown("<div id='plot' style='height:400px; background:#0D1520; border-radius:12px;'></div>", unsafe_allow_html=True)
         import streamlit.components.v1 as components
-        components.html(f"""<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-        <script>var x=Array.from({{length:40}},(_,i)=>i); var y1=x.map(i=>350*Math.exp(-0.06*i)); var y2=x.map(i=>i<5?y1[i]:y1[i]+(350*{d['mejora']}/100*Math.exp(-0.015*(i-5))));
-        Plotly.newPlot('plot', [{{x:x,y:y1,name:'Base',line:{{color:'#EF4444',dash:'dot'}}}},{{x:x,y:y2,name:'FlowBio',line:{{color:'#00E5A0',width:4}},fill:'tonexty'}}], {{paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{{color:'#64748B'}}, margin:{{t:20, b:40, l:50, r:20}}}});</script>""", height=420)
+        
+        # Generación de la gráfica de forma blindada (Sin f-strings de triple comilla)
+        mejora_val = str(d['mejora'])
+        chart_script = (
+            "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>"
+            "<script>"
+            "var x = Array.from({length:40}, (_,i)=>i);"
+            "var y1 = x.map(i => 350 * Math.exp(-0.06*i));"
+            "var y2 = x.map(i => i<5 ? y1[i] : y1[i] + (350 * " + mejora_val + " / 100 * Math.exp(-0.015*(i-5))));"
+            "var trace1 = {x:x, y:y1, name:'Base', line:{color:'#EF4444', dash:'dot'}};"
+            "var trace2 = {x:x, y:y2, name:'FlowBio AI', line:{color:'#00E5A0', width:4}, fill:'tonexty'};"
+            "var layout = {paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#64748B'}, margin:{t:20, b:40, l:50, r:20}};"
+            "Plotly.newPlot('plot', [trace1, trace2], layout);"
+            "</script>"
+        )
+        components.html(chart_script, height=420)
+        
     with cr:
-        st.markdown(f"""<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3);">
-            <p style="color:#00E5A0; font-weight:800; font-
-# Reemplaza el bloque problemático con esto:
+        # Generación de Insights de forma blindada
+        eur_val = f"{d['eur']:,}"
         insight_html = (
-            f'<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3);">'
-            f'<p style="color:#00E5A0; font-weight:800; font-size:12px;">🧠 ENGINEERING INSIGHTS</p>'
-            f'<p style="font-family: \'DM Mono\'; font-size: 14px; color: #22D3EE;">PV: {d["visc_p"]} cP | YP: {d["yield_p"]} lb/ft2</p>'
-            f'<p style="color:#64748B; font-size:10px;">INCREMENTAL: {d["eur"]:,} bbls</p>'
-            '</div>'
+            "<div style='background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3);'>"
+            "<p style='color:#00E5A0; font-weight:800; font-size:12px;'>🧠 ENGINEERING INSIGHTS</p>"
+            "<p style='font-family: \"DM Mono\"; font-size: 14px; color: #22D3EE;'>PV: " + str(d['visc_p']) + " cP | YP: " + str(d['yield_p']) + " lb/ft2</p>"
+            "<p style='color:#64748B; font-size:10px;'>INCREMENTAL: " + eur_val + " bbls</p>"
+            "</div>"
         )
         st.markdown(insight_html, unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.download_button("📥 DESCARGAR REPORTE PDF", data=generate_corporate_pdf(s_well, d), file_name="Reporte_FlowBio.pdf", mime="application/pdf")
