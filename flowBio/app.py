@@ -32,6 +32,9 @@ st.markdown("""
         width: 100%; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;
     }
     .stButton > button:hover { box-shadow: 0 0 25px rgba(0,229,160,0.4); transform: translateY(-2px); }
+    
+    /* Estilo del input de texto (Buscador) */
+    .stTextInput > div > div > input { background-color: #1A2A3A; color: white; border: 1px solid #00E5A0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -41,36 +44,16 @@ if 'screen' not in st.session_state: st.session_state.screen = 'splash'
 # 2. BASE DE DATOS JUPYTER (10 POZOS SIMULADOS)
 # ══════════════════════════════════════════════════════
 AGENT_DATA = {
-    "Pozo 15/17-1 (Central North Sea)": {
-        "ahorro": 394000.0, "mejora": 18.2, "fee": 4500.0, "co2": 112.0, "m_ratio": 0.25, "n": 0.569, "eur": 85000.0, "k": 151.4, "bpd": 420, "label": "PRIORIDAD ALTA - CRÍTICO"
-    },
-    "Pozo 15/17-2 (Flanco Sur)": {
-        "ahorro": 125000.0, "mejora": 12.1, "fee": 1800.0, "co2": 65.0, "m_ratio": 0.32, "n": 0.569, "eur": 32000.0, "k": 151.4, "bpd": 280, "label": "PRIORIDAD MEDIA - ESTABLE"
-    },
-    "Pozo 15/17-3 (Inyector Norte)": {
-        "ahorro": 280000.0, "mejora": 15.8, "fee": 3200.0, "co2": 95.0, "m_ratio": 0.28, "n": 0.569, "eur": 68000.0, "k": 151.4, "bpd": 350, "label": "PRIORIDAD ALTA - ESTABLE"
-    },
-    "Pozo 15/17-4 (Piper Alpha Area)": {
-        "ahorro": 450000.0, "mejora": 19.5, "fee": 5200.0, "co2": 130.0, "m_ratio": 0.22, "n": 0.569, "eur": 95000.0, "k": 151.4, "bpd": 500, "label": "PRIORIDAD MÁXIMA - DECLINACIÓN"
-    },
-    "Pozo 15/17-5 (Tartan Field)": {
-        "ahorro": 195000.0, "mejora": 14.2, "fee": 2500.0, "co2": 82.0, "m_ratio": 0.29, "n": 0.569, "eur": 45000.0, "k": 151.4, "bpd": 310, "label": "PRIORIDAD MEDIA - ESTABLE"
-    },
-    "Pozo 15/17-6a (Claymore)": {
-        "ahorro": 310000.0, "mejora": 16.5, "fee": 3800.0, "co2": 98.0, "m_ratio": 0.27, "n": 0.569, "eur": 72000.0, "k": 151.4, "bpd": 380, "label": "PRIORIDAD ALTA - ESTABLE"
-    },
-    "Pozo 15/17-7 (Saltire)": {
-        "ahorro": 95000.0, "mejora": 10.5, "fee": 1200.0, "co2": 45.0, "m_ratio": 0.45, "n": 0.569, "eur": 21000.0, "k": 151.4, "bpd": 220, "label": "PRIORIDAD BAJA - MADURO"
-    },
-    "Pozo 15/17-8b (Galley)": {
-        "ahorro": 520000.0, "mejora": 22.1, "fee": 6500.0, "co2": 145.0, "m_ratio": 0.18, "n": 0.569, "eur": 115000.0, "k": 151.4, "bpd": 550, "label": "PRIORIDAD MÁXIMA - SWEET SPOT"
-    },
-    "Pozo 15/17-9 (Ivanhoe)": {
-        "ahorro": 215000.0, "mejora": 13.8, "fee": 2900.0, "co2": 78.0, "m_ratio": 0.31, "n": 0.569, "eur": 51000.0, "k": 151.4, "bpd": 340, "label": "PRIORIDAD MEDIA - ESTABLE"
-    },
-    "Pozo 15/17-10 (Rob Roy)": {
-        "ahorro": 380000.0, "mejora": 17.5, "fee": 4200.0, "co2": 105.0, "m_ratio": 0.26, "n": 0.569, "eur": 81000.0, "k": 151.4, "bpd": 400, "label": "PRIORIDAD ALTA - ESTABLE"
-    }
+    "Pozo 15/17-1 (Central North Sea)": {"ahorro": 394000.0, "mejora": 18.2, "fee": 4500.0, "co2": 112.0, "m_ratio": 0.25, "n": 0.569, "eur": 85000.0, "k": 151.4, "bpd": 420, "label": "PRIORIDAD ALTA - CRÍTICO"},
+    "Pozo 15/17-2 (Flanco Sur)": {"ahorro": 125000.0, "mejora": 12.1, "fee": 1800.0, "co2": 65.0, "m_ratio": 0.32, "n": 0.569, "eur": 32000.0, "k": 151.4, "bpd": 280, "label": "PRIORIDAD MEDIA - ESTABLE"},
+    "Pozo 15/17-3 (Inyector Norte)": {"ahorro": 280000.0, "mejora": 15.8, "fee": 3200.0, "co2": 95.0, "m_ratio": 0.28, "n": 0.569, "eur": 68000.0, "k": 151.4, "bpd": 350, "label": "PRIORIDAD ALTA - ESTABLE"},
+    "Pozo 15/17-4 (Piper Alpha Area)": {"ahorro": 450000.0, "mejora": 19.5, "fee": 5200.0, "co2": 130.0, "m_ratio": 0.22, "n": 0.569, "eur": 95000.0, "k": 151.4, "bpd": 500, "label": "PRIORIDAD MÁXIMA - DECLINACIÓN"},
+    "Pozo 15/17-5 (Tartan Field)": {"ahorro": 195000.0, "mejora": 14.2, "fee": 2500.0, "co2": 82.0, "m_ratio": 0.29, "n": 0.569, "eur": 45000.0, "k": 151.4, "bpd": 310, "label": "PRIORIDAD MEDIA - ESTABLE"},
+    "Pozo 15/17-6a (Claymore)": {"ahorro": 310000.0, "mejora": 16.5, "fee": 3800.0, "co2": 98.0, "m_ratio": 0.27, "n": 0.569, "eur": 72000.0, "k": 151.4, "bpd": 380, "label": "PRIORIDAD ALTA - ESTABLE"},
+    "Pozo 15/17-7 (Saltire)": {"ahorro": 95000.0, "mejora": 10.5, "fee": 1200.0, "co2": 45.0, "m_ratio": 0.45, "n": 0.569, "eur": 21000.0, "k": 151.4, "bpd": 220, "label": "PRIORIDAD BAJA - MADURO"},
+    "Pozo 15/17-8b (Galley)": {"ahorro": 520000.0, "mejora": 22.1, "fee": 6500.0, "co2": 145.0, "m_ratio": 0.18, "n": 0.569, "eur": 115000.0, "k": 151.4, "bpd": 550, "label": "PRIORIDAD MÁXIMA - SWEET SPOT"},
+    "Pozo 15/17-9 (Ivanhoe)": {"ahorro": 215000.0, "mejora": 13.8, "fee": 2900.0, "co2": 78.0, "m_ratio": 0.31, "n": 0.569, "eur": 51000.0, "k": 151.4, "bpd": 340, "label": "PRIORIDAD MEDIA - ESTABLE"},
+    "Pozo 15/17-10 (Rob Roy)": {"ahorro": 380000.0, "mejora": 17.5, "fee": 4200.0, "co2": 105.0, "m_ratio": 0.26, "n": 0.569, "eur": 81000.0, "k": 151.4, "bpd": 400, "label": "PRIORIDAD ALTA - ESTABLE"}
 }
 
 # ══════════════════════════════════════════════════════
@@ -151,15 +134,25 @@ if st.session_state.screen == 'splash':
             st.rerun()
 
 elif st.session_state.screen == 'dash':
-    # --- SIDEBAR: BUSCADOR EXPLÍCITO ---
+    # --- SIDEBAR: BUSCADOR REAL E INDEPENDIENTE ---
     st.sidebar.markdown("<h3 style='font-family:Syne; color:#00E5A0;'>🧬 DATA LAKE</h3>", unsafe_allow_html=True)
-    st.sidebar.markdown("<p style='font-size:13px; color:#8BA8C0; font-weight:600;'>⌨️ Haz clic y escribe para buscar:</p>", unsafe_allow_html=True)
     
-    selected_well = st.sidebar.selectbox(
-        "", 
-        list(AGENT_DATA.keys()),
-        label_visibility="collapsed"
-    )
+    # 1. Caja de texto para buscar explícitamente
+    search_query = st.sidebar.text_input("🔍 Buscar pozo por nombre:", placeholder="Ej. Piper, Norte, 15/17...")
+    
+    # 2. Lógica de Filtrado Inteligente
+    if search_query:
+        filtered_wells = [well for well in AGENT_DATA.keys() if search_query.lower() in well.lower()]
+    else:
+        filtered_wells = list(AGENT_DATA.keys()) # Mostrar todos si no hay búsqueda
+        
+    # 3. Manejo de errores si no se encuentra el pozo
+    if len(filtered_wells) == 0:
+        st.sidebar.warning("⚠️ No se encontraron pozos con ese nombre.")
+        st.stop() # Detiene la app aquí para que no falle lo de abajo
+        
+    # 4. Selector del resultado filtrado
+    selected_well = st.sidebar.selectbox("Resultados de tu búsqueda:", filtered_wells)
     d = AGENT_DATA[selected_well]
     
     st.sidebar.markdown("<hr style='opacity:0.2;'>", unsafe_allow_html=True)
@@ -167,7 +160,7 @@ elif st.session_state.screen == 'dash':
         st.session_state.screen = 'splash'
         st.rerun()
 
-    # --- CABECERA ---
+    # --- CABECERA PRINCIPAL ---
     st.markdown("<h2 style='font-family:Syne; margin-bottom:0px; color:white;'>Command Center</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color:#22D3EE; font-family:\"DM Mono\"; font-size:14px; margin-bottom:20px;'>[" + str(d['label']) + "] ➔ " + str(selected_well) + "</p>", unsafe_allow_html=True)
     
@@ -193,7 +186,15 @@ elif st.session_state.screen == 'dash':
             Plotly.newPlot('plot', [
                 {x:x, y:y1, type:'scatter', line:{color:'#EF4444', dash:'dot', width:2}, name:'Base (HPAM)'},
                 {x:x, y:y2, type:'scatter', line:{color:'#00E5A0', width:4}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.1)', name:'FlowBio Na-CMC'}
-            ], { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#64748B', family:'DM Mono'}, margin:{t:30, b:40, l:50, r:20}, xaxis:{gridcolor:'#1A2A3A'}, yaxis:{gridcolor:'#1A2A3A'} }, {responsive: true, displayModeBar: false});
+            ], { 
+                paper_bgcolor:'rgba(0,0,0,0)', 
+                plot_bgcolor:'rgba(0,0,0,0)', 
+                font:{color:'#64748B', family:'DM Mono'}, 
+                margin:{t:30, b:40, l:50, r:20}, 
+                xaxis:{gridcolor:'#1A2A3A'}, 
+                yaxis:{gridcolor:'#1A2A3A'},
+                hoverlabel: {bgcolor: '#060B11', font: {color: '#00E5A0'}, bordercolor: '#00E5A0'} 
+            }, {responsive: true, displayModeBar: false});
         </script>
         """.replace("__BASE_BPD__", str(d['bpd'])).replace("__MEJORA_PCT__", str(d['mejora']/100))
         components.html(HTML_CHART, height=540)
@@ -224,7 +225,6 @@ elif st.session_state.screen == 'dash':
         )
         st.markdown(html_insights, unsafe_allow_html=True)
         
-        # --- BOTONES DE DESCARGA Y REGRESO ---
         st.markdown("<br>", unsafe_allow_html=True)
         pdf_b64 = generate_pdf_base64(d, selected_well)
         safe_filename = selected_well[:10].replace(" ", "_")
