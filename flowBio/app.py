@@ -39,7 +39,7 @@ st.markdown("""
 if 'screen' not in st.session_state: st.session_state.screen = 'splash'
 
 # ══════════════════════════════════════════════════════
-# 2. BASE DE DATOS DE AGENTES (SIN EMOJIS PARA EVITAR ERRORES FPDF)
+# 2. BASE DE DATOS DE AGENTES 
 # ══════════════════════════════════════════════════════
 AGENT_DATA = {
     "Pozo 15/17-1 (Central North Sea)": {
@@ -84,7 +84,6 @@ class FlowBioReport(FPDF):
         self.rect(x, y, 45, 22, 'FD')
         self.set_xy(x, y + 4)
         self.set_font('Arial', 'B', 14); self.set_text_color(0, 120, 80)
-        # Convertimos a string y forzamos a ascii para evitar errores de codificación
         safe_value = str(value).encode('ascii', 'ignore').decode('ascii')
         self.cell(45, 8, safe_value, border=0, ln=0, align='C')
         self.set_xy(x, y + 13)
@@ -96,14 +95,13 @@ def generate_pdf_base64(d, nombre_pozo):
     pdf = FlowBioReport()
     pdf.add_page()
     
-    # Subtítulo Dinámico (Sanitizado)
     safe_nombre = str(nombre_pozo).encode('latin-1', 'ignore').decode('latin-1')
     pdf.set_font('Arial', 'B', 14); pdf.set_text_color(6, 11, 17)
     pdf.cell(0, 10, f"Activo Analizado: {safe_nombre}", 0, 1, 'L')
     
     pdf.draw_section_header('Impacto Economico Anual Proyectado')
     pdf.set_font('Arial', 'B', 26); pdf.set_text_color(0, 150, 100)
-    pdf.cell(0, 18, f"${d['ahorro']:,.0f} USD/ano", 0, 1, 'L') # Cambiado "año" por "ano" para fpdf
+    pdf.cell(0, 18, f"${d['ahorro']:,.0f} USD/ano", 0, 1, 'L') 
     
     pdf.draw_metric_card("ROI Estimado", "15%", 10, 95)
     pdf.draw_metric_card("Ahorro/bbl", "$2.57", 58, 95)
@@ -142,10 +140,8 @@ if st.session_state.screen == 'splash':
             st.rerun()
 
 elif st.session_state.screen == 'dash':
-    # SIDEBAR: El Buscador/Selector de Pozos
     st.sidebar.markdown("<h3 style='font-family:Syne; color:#00E5A0;'>🧬 DATA LAKE</h3>", unsafe_allow_html=True)
     
-    # Reemplazado radio por selectbox (Buscador)
     selected_well = st.sidebar.selectbox(
         "🔍 Buscar y seleccionar activo:",
         list(AGENT_DATA.keys())
@@ -157,25 +153,40 @@ elif st.session_state.screen == 'dash':
         st.session_state.screen = 'splash'
         st.rerun()
 
-    # ÁREA PRINCIPAL
     st.markdown(f"<h2 style='font-family:Syne; margin-bottom:0px; color:white;'>Command Center</h2>", unsafe_allow_html=True)
     st.markdown(f"<p style='color:#22D3EE; font-family:\"DM Mono\"; font-size:14px; margin-bottom:20px;'>[{d['label']}] ➔ {selected_well}</p>", unsafe_allow_html=True)
     
-    # 4 KPIs Superiores
     k1, k2, k3, k4 = st.columns(4)
     with k1: st.markdown(f'<div class="kpi-box"><p class="kpi-label">AHORRO OPEX / AÑO</p><p class="kpi-value" style="color:#00E5A0;">${d["ahorro"]:,.0f}</p></div>', unsafe_allow_html=True)
     with k2: st.markdown(f'<div class="kpi-box" style="border-top-color:#3B82F6;"><p class="kpi-label">MEJORA PROYECTADA</p><p class="kpi-value">+{d["mejora"]:.1f}%</p></div>', unsafe_allow_html=True)
     with k3: st.markdown(f'<div class="kpi-box" style="border-top-color:#22D3EE;"><p class="kpi-label">FEE MENSUAL USD</p><p class="kpi-value" style="color:#22D3EE;">${d["fee"]:,.0f}</p></div>', unsafe_allow_html=True)
     with k4: st.markdown(f'<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">ESG CO2 EVITADO</p><p class="kpi-value" style="color:#F59E0B;">{d["co2"]}t</p></div>', unsafe_allow_html=True)
 
-    # Gráfica y Métricas Laterales
     cl, cr = st.columns([3, 1])
     with cl:
-        HTML_CHART = f"""
+        # Se elimina el uso de llaves en f-string y se usa .replace() para evitar SyntaxError de Python
+        HTML_CHART = """
         <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
         <div id="plot" style="height:480px; border-radius:12px; background:#0D1520; border:1px solid rgba(255,255,255,0.05); margin-top:20px;"></div>
         <script>
-            var x = Array.from({{length:40}}, (_,i)=>i);
-            var base = {d['bpd']};
+            var x = Array.from({length:40}, (_,i)=>i);
+            var base = __BASE_BPD__;
+            var mejora = __MEJORA_PCT__;
             var y1 = x.map(i => base * Math.exp(-0.06*i));
-            var y2 = x.map(i => i<5 ? y1
+            var y2 = x.map(i => i<5 ? y1[i] : y1[i] + (base * mejora * Math.exp(-0.015*(i-5))));
+            Plotly.newPlot('plot', [
+                {x:x, y:y1, type:'scatter', line:{color:'#EF4444', dash:'dot', width:2}, name:'Base (HPAM)'},
+                {x:x, y:y2, type:'scatter', line:{color:'#00E5A0', width:4}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.1)', name:'FlowBio Na-CMC'}
+            ], { paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#64748B', family:'DM Mono'}, margin:{t:30, b:40, l:50, r:20}, xaxis:{gridcolor:'#1A2A3A'}, yaxis:{gridcolor:'#1A2A3A'} }, {responsive: true, displayModeBar: false});
+        </script>
+        """.replace("__BASE_BPD__", str(d['bpd'])).replace("__MEJORA_PCT__", str(d['mejora']/100))
+        
+        components.html(HTML_CHART, height=520)
+        
+    with cr:
+        st.markdown(f"""
+        <div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid #1A2A3A; margin-top:20px;">
+            <p style="font-size:10px; color:#64748B; font-weight:700; letter-spacing:1px;">FÍSICA DEL POZO</p>
+            <p style="font-size:9px; color:#475569; margin-top:15px;">RATIO DE MOVILIDAD</p>
+            <p style="font-family:'Syne'; font-size:26px; color:#22D3EE; margin:0;">{d['m_ratio']}</p>
+            <p style="font-size:9px; color:#475569; margin-top:15px;">ÍNDICE
