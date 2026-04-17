@@ -31,6 +31,15 @@ st.markdown("""
     }
     .stButton > button:hover { box-shadow: 0 0 25px rgba(0,229,160,0.4); transform: translateY(-2px); }
     
+    /* Botón especial para volver al inicio */
+    .btn-return > div > button {
+        background: transparent !important; color: #64748B !important;
+        border: 1px solid #1A2A3A !important;
+    }
+    .btn-return > div > button:hover {
+        background: #1A2A3A !important; color: white !important; border-color: #00E5A0 !important;
+    }
+    
     div[data-baseweb="select"] > div {
         background-color: #0D1520; border: 1px solid #00E5A0; color: white; border-radius: 8px;
     }
@@ -134,17 +143,12 @@ if st.session_state.screen == 'splash':
 
 elif st.session_state.screen == 'dash':
     
-    col_t, col_btn = st.columns([4, 1])
-    with col_t:
-        st.markdown("<h2 style='font-family:Syne; margin-bottom:10px; color:white;'>Command Center</h2>", unsafe_allow_html=True)
-    with col_btn:
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🔌 DESCONECTAR"):
-            st.session_state.screen = 'splash'
-            st.rerun()
+    # --- CABECERA PRINCIPAL ---
+    st.markdown("<h2 style='font-family:Syne; margin-bottom:10px; color:white;'>Command Center</h2>", unsafe_allow_html=True)
 
     st.markdown("<p style='color:#64748B; font-weight:600; font-size:14px;'>🔍 Haz clic en la caja de abajo y escribe para buscar el pozo a analizar:</p>", unsafe_allow_html=True)
     
+    # 🌟 BUSCADOR EN EL CENTRO DE LA PANTALLA 🌟
     selected_well = st.selectbox(
         "", 
         list(AGENT_DATA.keys()),
@@ -154,6 +158,7 @@ elif st.session_state.screen == 'dash':
     
     st.markdown("<p style='color:#22D3EE; font-family:\"DM Mono\"; font-size:12px; margin-top:10px; margin-bottom:20px;'>STATUS: [" + str(d['label']) + "]</p>", unsafe_allow_html=True)
     
+    # --- KPIs ---
     k1, k2, k3, k4 = st.columns(4)
     with k1: 
         st.markdown('<div class="kpi-box"><p class="kpi-label">AHORRO OPEX / AÑO</p><p class="kpi-value" style="color:#00E5A0;">$' + f"{d['ahorro']:,.0f}" + '</p></div>', unsafe_allow_html=True)
@@ -164,6 +169,7 @@ elif st.session_state.screen == 'dash':
     with k4: 
         st.markdown('<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">ESG CO2 EVITADO</p><p class="kpi-value" style="color:#F59E0B;">' + str(d['co2']) + 't</p></div>', unsafe_allow_html=True)
 
+    # --- GRÁFICA Y ARGUMENTOS DE VENTA ---
     cl, cr = st.columns([2.5, 1.5])
     with cl:
         HTML_CHART = """
@@ -223,3 +229,15 @@ elif st.session_state.screen == 'dash':
         
         btn_pdf = '<a href="data:application/pdf;base64,' + pdf_b64 + '" download="Reporte_' + safe_filename + '.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 DESCARGAR REPORTE DEL POZO</button></a>'
         st.markdown(btn_pdf, unsafe_allow_html=True)
+    
+    # --- BOTÓN DE INICIO GLOBAL (OCUPA TODO EL ANCHO ABAJO) ---
+    st.markdown("<hr style='opacity:0.1; margin-top:30px; margin-bottom:20px;'>", unsafe_allow_html=True)
+    
+    # Usando un layout de 3 columnas para centrar el botón, aplicándole una clase CSS especial
+    _, col_center, _ = st.columns([1, 2, 1])
+    with col_center:
+        st.markdown('<div class="btn-return">', unsafe_allow_html=True)
+        if st.button("🏠 VOLVER AL INICIO / DESCONECTAR", use_container_width=True):
+            st.session_state.screen = 'splash'
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
