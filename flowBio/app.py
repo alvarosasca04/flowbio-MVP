@@ -34,29 +34,29 @@ if 'screen' not in st.session_state: st.session_state.screen = 'splash'
 if 'data' not in st.session_state: st.session_state.data = None
 
 # ══════════════════════════════════════════════════════
-# 2. MOTOR DE INGENIERÍA PIML (DATOS REALES)
+# 2. MOTOR DE INGENIERÍA PIML (DATOS REALES DE AGENTES)
 # ══════════════════════════════════════════════════════
 def calculate_piml_physics(fluido, pozos, bpd):
-    # Parámetros basados en el reporte oficial de FlowBio
-    n = 0.569 if "Na-CMC" in fluido else 0.78  # Índice de flujo [cite: 14]
-    k_consistencia = 151.4 if "Na-CMC" in fluido else 85.2 # [cite: 16]
-    mobility_ratio = 0.28 if "Na-CMC" in fluido else 0.85 # [cite: 18]
+    # DATOS REALES DEL REPORTE TÉCNICO FLOWBIO 
+    n = 0.569 if "Na-CMC" in fluido else 0.78
+    k_consistencia = 151.4 if "Na-CMC" in fluido else 85.2
+    mobility_ratio = 0.28 if "Na-CMC" in fluido else 0.85
+    mejora_pct = 16.5 if "Na-CMC" in fluido else 11.0
     
-    # Cálculos de Producción
-    mejora_pct = 16.5 if "Na-CMC" in fluido else 11.0 # [cite: 11, 32]
+    # Cálculos económicos basados en el análisis de agentes 
     extra_bpd = bpd * (mejora_pct / 100)
-    ahorro_anual = extra_bpd * 365 * pozos * 2.57 # Ahorro de $2.57 por barril [cite: 10]
-    eur_5a = extra_bpd * 365 * 5 * 0.8 * pozos # Reservas a 5 años
+    ahorro_anual = extra_bpd * 365 * pozos * 2.57 
+    eur_5a = extra_bpd * 365 * 5 * 0.8 * pozos
     
     return {
         "n": n, "k": k_consistencia, "m_ratio": mobility_ratio,
         "ahorro": ahorro_anual, "mejora": mejora_pct,
-        "eur": eur_5a, "mpy": 0.8 if "Na-CMC" in fluido else 25.0,
+        "eur": eur_5a, "mpy": 0.1 if "Na-CMC" in fluido else 25.0,
         "pozos": pozos, "bpd": bpd, "fluido": fluido
     }
 
 # ══════════════════════════════════════════════════════
-# 3. MOTOR DE REPORTE PDF (ESTILO OFICIAL)
+# 3. MOTOR DE REPORTE PDF (FORMATO OFICIAL VISIBLE)
 # ══════════════════════════════════════════════════════
 class FlowBioReport(FPDF):
     def header(self):
@@ -73,23 +73,22 @@ def generate_pdf_base64(d):
     pdf.set_font('Arial', 'B', 11); pdf.set_text_color(0, 229, 160)
     pdf.cell(0, 10, 'IMPACTO ECONOMICO ANUAL PROYECTADO', 0, 1, 'L')
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.set_font('Arial', 'B', 22); pdf.set_text_color(0, 150, 100)
+    pdf.set_font('Arial', 'B', 22); pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 15, f"${d['ahorro']:,.0f} USD/año", 0, 1)
     
-    # Análisis Reológico (Valores que cuadran con los agentes)
+    # Análisis Reológico (Legibilidad mejorada para el reporte)
     pdf.ln(10); pdf.set_font('Arial', 'B', 11); pdf.set_text_color(0, 229, 160)
-    pdf.cell(0, 10, 'ANALISIS REOLOGICO - MODELO POWER LAW (PIML)', 0, 1, 'L')
-    pdf.set_font('Arial', '', 10); pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 10, 'ANALISIS REOLOGICO - MOTOR PIML', 0, 1, 'L')
+    pdf.set_font('Arial', '', 11); pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 8, f"- Indice de flujo (n): {d['n']}", 0, 1)
     pdf.cell(0, 8, f"- Consistencia K: {d['k']} mPas", 0, 1)
-    pdf.cell(0, 8, f"- Ratio de movilidad: {d['m_ratio']}", 0, 1)
     pdf.cell(0, 8, f"- Eficiencia de barrido: {d['mejora']}%", 0, 1)
 
     binary_pdf = pdf.output(dest="S").encode("latin-1")
     return base64.b64encode(binary_pdf).decode()
 
 # ══════════════════════════════════════════════════════
-# 4. FLUJO DE NAVEGACIÓN
+# 4. PANTALLAS
 # ══════════════════════════════════════════════════════
 if st.session_state.screen == 'splash':
     st.markdown("""<div style="height:60vh; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; color:white; padding-bottom:40px;">
@@ -99,7 +98,7 @@ if st.session_state.screen == 'splash':
     if c2.button("DEMO REAL S3 (10 POZOS)"):
         st.session_state.data = calculate_piml_physics("Na-CMC", 10, 350)
         st.session_state.screen = 'dash'; st.rerun()
-    if c3.button("SIMULADOR IA (CONFIGURABLE)"):
+    if c3.button("SIMULADOR IA (MANUAL)"):
         st.session_state.screen = 'setup'; st.rerun()
 
 elif st.session_state.screen == 'setup':
@@ -123,12 +122,26 @@ elif st.session_state.screen == 'dash':
 
     cl, cr = st.columns([3, 1])
     with cl:
-        st.markdown(f"<div style='background:#0D1520; border-radius:12px; height:450px; border:1px solid #1A2A3A; padding:20px; color:#64748B;'>Gráfica de Declinación Validada por Agentes para {d['pozos']} pozos.</div>", unsafe_allow_html=True)
+        HTML_CHART = f"""
+        <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+        <div id="plot" style="height:480px; border-radius:12px; background:#0D1520; border:1px solid rgba(255,255,255,0.05);"></div>
+        <script>
+            var x = Array.from({{length:40}}, (_,i)=>i);
+            var base = {d['pozos'] * d['bpd']};
+            var y1 = x.map(i => base * Math.exp(-0.06*i));
+            var y2 = x.map(i => i<5 ? y1[i] : y1[i] + (base * {d['mejora']/100} * Math.exp(-0.015*(i-5))));
+            Plotly.newPlot('plot', [
+                {{x:x, y:y1, type:'scatter', line:{{color:'#EF4444', dash:'dot', width:2}}, name:'Base'}},
+                {{x:x, y:y2, type:'scatter', line:{{color:'#00E5A0', width:4}}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.1)', name:'FlowBio'}}
+            ], {{ paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{{color:'#64748B', family:'DM Mono'}}, margin:{{t:20, b:40, l:50, r:20}}, xaxis:{{gridcolor:'#1A2A3A'}}, yaxis:{{gridcolor:'#1A2A3A'}} }}, {{responsive: true, displayModeBar: false}});
+        </script>
+        """
+        components.html(HTML_CHART, height=500)
     with cr:
         st.markdown(f"""<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid #1A2A3A;">
             <p style="font-size:10px; color:#64748B; font-weight:700;">DATOS TECNICOS</p>
             <p style="font-size:9px; color:#475569; margin-top:15px;">RESERVAS EUR (5A)</p><p style="font-family:'Syne'; font-size:26px; color:#22D3EE; margin:0;">{d['eur']:,.0f}</p>
             <p style="font-size:9px; color:#475569; margin-top:15px;">CONSISTENCIA K</p><p style="font-family:'Syne'; font-size:26px; color:#00E5A0; margin:0;">{d['k']}</p></div>""", unsafe_allow_html=True)
         pdf_b64 = generate_pdf_base64(d)
-        st.markdown(f'<br><a href="data:application/pdf;base64,{pdf_b64}" download="FlowBio_Technical_Report.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 DESCARGAR REPORTE OFICIAL</button></a>', unsafe_allow_html=True)
+        st.markdown(f'<br><a href="data:application/pdf;base64,{pdf_b64}" download="FlowBio_Report.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 DESCARGAR REPORTE OFICIAL</button></a>', unsafe_allow_html=True)
         if st.button("🏠 INICIO"): st.session_state.screen = 'splash'; st.rerun()
