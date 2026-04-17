@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import json
 import boto3
 import math
@@ -16,7 +17,6 @@ st.markdown("""
     [data-testid="stHeader"], [data-testid="stSidebar"], footer { display: none !important; }
     .stApp { background: #060B11; }
     .block-container { padding: 2rem 3rem !important; }
-    
     .kpi-box { background: rgba(13, 21, 32, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 22px; border-top: 4px solid #00E5A0; }
     .kpi-label { font-family: 'Inter'; font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; }
     .kpi-value { font-family: 'Syne'; font-size: 32px; font-weight: 800; color: #fff; margin: 5px 0; }
@@ -29,12 +29,11 @@ st.markdown("""
 # ══════════════════════════════════════════════════════
 def load_data_from_s3():
     try:
-        s3 = boto3.client('s3', aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
-                          aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"], region_name="us-east-2")
+        s3 = boto3.client('s3', aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"], aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"], region_name="us-east-2")
         response = s3.get_object(Bucket="flowbio-data-lake-v2-627807503177-us-east-2-an", Key="agentes/dashboard_data.json")
         return json.loads(response['Body'].read().decode('utf-8'))
     except Exception as e:
-        st.error("Error al cargar datos. Verifica tus credenciales.")
+        st.error("Error al cargar datos. Verifica credenciales.")
         return None
 
 def generate_corporate_pdf(well, d):
@@ -49,9 +48,7 @@ def generate_corporate_pdf(well, d):
     pdf.cell(0, 10, 'Fecha: ' + datetime.now().strftime("%Y-%m-%d"), 0, 1)
     pdf.ln(10)
     pdf.set_fill_color(13, 21, 32)
-    
     eur_str = f"{d.get('eur'):,}"
-    
     for k, v in [["PV", str(d.get('visc_p')) + " cP"], ["YP", str(d.get('yield_p')) + " lb/ft2"], ["EUR", eur_str + " bbls"], ["PAYBACK", str(d.get('payback')) + " Meses"]]:
         pdf.cell(95, 12, " " + k, 1, 0, 'L', True)
         pdf.cell(95, 12, " " + v, 1, 1, 'R')
@@ -80,7 +77,6 @@ else:
     s_well = st.selectbox("Activo:", wells)
     d = st.session_state.all_data[s_well]
     
-    # KPIs 
     k1, k2, k3, k4 = st.columns(4)
     with k1: 
         st.markdown('<div class="kpi-box"><p class="kpi-label">AHORRO</p><p class="kpi-value">$' + f"{d['ahorro']:,}" + '</p></div>', unsafe_allow_html=True)
@@ -91,7 +87,6 @@ else:
     with k4: 
         st.markdown('<div class="kpi-box"><p class="kpi-label">PAYBACK</p><p class="kpi-value">' + str(d['payback']) + ' Meses</p></div>', unsafe_allow_html=True)
 
-    # Gráfica e Insights
     cl, cr = st.columns([2.3, 1.7])
     
     with cl:
@@ -109,7 +104,6 @@ else:
             "Plotly.newPlot('plot', [trace1, trace2], layout);"
             "</script>"
         )
-        import streamlit.components.v1 as components
         components.html(chart_html, height=420)
         
     with cr:
