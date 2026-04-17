@@ -31,7 +31,6 @@ st.markdown("""
     }
     .stButton > button:hover { box-shadow: 0 0 25px rgba(0,229,160,0.4); transform: translateY(-2px); }
     
-    /* Estilizar el buscador para que se vea premium */
     div[data-baseweb="select"] > div {
         background-color: #0D1520; border: 1px solid #00E5A0; color: white; border-radius: 8px;
     }
@@ -135,7 +134,6 @@ if st.session_state.screen == 'splash':
 
 elif st.session_state.screen == 'dash':
     
-    # --- CABECERA PRINCIPAL Y BOTÓN DESCONECTAR ---
     col_t, col_btn = st.columns([4, 1])
     with col_t:
         st.markdown("<h2 style='font-family:Syne; margin-bottom:10px; color:white;'>Command Center</h2>", unsafe_allow_html=True)
@@ -147,7 +145,6 @@ elif st.session_state.screen == 'dash':
 
     st.markdown("<p style='color:#64748B; font-weight:600; font-size:14px;'>🔍 Haz clic en la caja de abajo y escribe para buscar el pozo a analizar:</p>", unsafe_allow_html=True)
     
-    # 🌟 BUSCADOR EN EL CENTRO DE LA PANTALLA 🌟
     selected_well = st.selectbox(
         "", 
         list(AGENT_DATA.keys()),
@@ -157,7 +154,6 @@ elif st.session_state.screen == 'dash':
     
     st.markdown("<p style='color:#22D3EE; font-family:\"DM Mono\"; font-size:12px; margin-top:10px; margin-bottom:20px;'>STATUS: [" + str(d['label']) + "]</p>", unsafe_allow_html=True)
     
-    # --- KPIs ---
     k1, k2, k3, k4 = st.columns(4)
     with k1: 
         st.markdown('<div class="kpi-box"><p class="kpi-label">AHORRO OPEX / AÑO</p><p class="kpi-value" style="color:#00E5A0;">$' + f"{d['ahorro']:,.0f}" + '</p></div>', unsafe_allow_html=True)
@@ -168,7 +164,6 @@ elif st.session_state.screen == 'dash':
     with k4: 
         st.markdown('<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">ESG CO2 EVITADO</p><p class="kpi-value" style="color:#F59E0B;">' + str(d['co2']) + 't</p></div>', unsafe_allow_html=True)
 
-    # --- GRÁFICA Y ARGUMENTOS DE VENTA ---
     cl, cr = st.columns([2.5, 1.5])
     with cl:
         HTML_CHART = """
@@ -190,4 +185,41 @@ elif st.session_state.screen == 'dash':
                 margin:{t:30, b:40, l:50, r:20}, 
                 xaxis:{gridcolor:'#1A2A3A'}, 
                 yaxis:{gridcolor:'#1A2A3A'},
-                hoverlabel: {bgcolor: '#060B11', font: {color: '#00E5A0'}, bordercolor: '#00E5A0'}
+                hoverlabel: {bgcolor: '#060B11', font: {color: '#00E5A0'}, bordercolor: '#00E5A0'} 
+            }, {responsive: true, displayModeBar: false});
+        </script>
+        """.replace("__BASE_BPD__", str(d['bpd'])).replace("__MEJORA_PCT__", str(d['mejora']/100))
+        components.html(HTML_CHART, height=540)
+        
+    with cr:
+        html_insights = (
+            '<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); margin-top:20px; height:500px; display:flex; flex-direction:column; justify-content:space-between;">'
+            '<p style="font-size:12px; color:#00E5A0; font-weight:800; letter-spacing:1px; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">🧠 ENGINEERING INSIGHTS</p>'
+            
+            '<div style="margin-bottom:15px;">'
+            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Ratio de Movilidad (M)</p>'
+            '<p style="font-family:\'Syne\'; font-size:26px; color:#22D3EE; margin:0;">' + str(d['m_ratio']) + '</p>'
+            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Al ser < 1, previene la canalización de agua (viscous fingering), forzando un barrido uniforme del crudo en la roca.</p>'
+            '</div>'
+            
+            '<div style="margin-bottom:15px;">'
+            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Índice de Flujo (n)</p>'
+            '<p style="font-family:\'Syne\'; font-size:26px; color:#F59E0B; margin:0;">' + str(d['n']) + '</p>'
+            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Comportamiento pseudoplástico: fluye fácil cerca del pozo (ahorra energía) y espesa en el yacimiento.</p>'
+            '</div>'
+            
+            '<div style="margin-bottom:15px;">'
+            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Reservas Adicionales (5A)</p>'
+            '<p style="font-family:\'Syne\'; font-size:26px; color:#00E5A0; margin:0;">' + f"{d['eur']:,.0f}" + ' <span style="font-size:14px; color:#64748B;">bbls</span></p>'
+            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Petróleo incremental directo a la cuota de producción proyectada por la alta eficiencia de barrido del Na-CMC.</p>'
+            '</div>'
+            '</div>'
+        )
+        st.markdown(html_insights, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        pdf_b64 = generate_pdf_base64(d, selected_well)
+        safe_filename = selected_well[:10].replace(" ", "_")
+        
+        btn_pdf = '<a href="data:application/pdf;base64,' + pdf_b64 + '" download="Reporte_' + safe_filename + '.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 DESCARGAR REPORTE DEL POZO</button></a>'
+        st.markdown(btn_pdf, unsafe_allow_html=True)
