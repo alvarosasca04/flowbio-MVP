@@ -1,13 +1,10 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import json
-import requests
 import base64
-import math
 from fpdf import FPDF
 
 # ══════════════════════════════════════════════════════
-# 1. IDENTIDAD VISUAL PREMIUM
+# 1. IDENTIDAD VISUAL PREMIUM Y CSS
 # ══════════════════════════════════════════════════════
 st.set_page_config(page_title="FlowBio Subsurface OS", page_icon="🧬", layout="wide", initial_sidebar_state="collapsed")
 
@@ -21,12 +18,16 @@ st.markdown("""
         background: rgba(13, 21, 32, 0.8); border: 1px solid rgba(255, 255, 255, 0.05);
         border-radius: 12px; padding: 22px; border-top: 4px solid #00E5A0;
     }
+    .kpi-label { font-family: 'Inter'; font-size: 11px; color: #64748B; letter-spacing: 1px; font-weight: 600; text-transform: uppercase; }
+    .kpi-value { font-family: 'Syne'; font-size: 38px; font-weight: 800; color: #fff; margin: 5px 0; }
+    .kpi-sub { font-family: 'DM Mono'; font-size: 12px; color: #8BA8C0; }
     .stButton > button {
         background: #00E5A0 !important; color: #060B11 !important;
         font-family: 'Syne' !important; font-weight: 800 !important;
         border-radius: 8px !important; padding: 15px 30px !important;
         width: 100%; transition: 0.3s; text-transform: uppercase;
     }
+    .stButton > button:hover { box-shadow: 0 0 25px rgba(0,229,160,0.4); transform: translateY(-2px); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -37,7 +38,7 @@ if 'data' not in st.session_state: st.session_state.data = None
 # 2. MOTOR DE INGENIERÍA PIML (DATOS REALES)
 # ══════════════════════════════════════════════════════
 def calculate_piml_physics(fluido, pozos, bpd):
-    # Parámetros del reporte oficial
+    # Parámetros validados por Agentes
     n = 0.569 if "Na-CMC" in fluido else 0.78
     k_consistencia = 151.4 if "Na-CMC" in fluido else 85.2
     mobility_ratio = 0.28 if "Na-CMC" in fluido else 0.85
@@ -54,7 +55,7 @@ def calculate_piml_physics(fluido, pozos, bpd):
     }
 
 # ══════════════════════════════════════════════════════
-# 3. MOTOR DE REPORTE PDF (DISTRIBUCIÓN MEJORADA)
+# 3. MOTOR DE REPORTE PDF (CORREGIDO Y ALINEADO)
 # ══════════════════════════════════════════════════════
 class FlowBioReport(FPDF):
     def header(self):
@@ -76,13 +77,19 @@ class FlowBioReport(FPDF):
         self.ln(5)
 
     def draw_metric_card(self, label, value, x, y):
+        # Fondo de la caja
         self.set_fill_color(250, 250, 250); self.set_draw_color(230, 230, 230)
-        self.rect(x, y, 46, 22, 'FD')
+        self.rect(x, y, 45, 22, 'FD')
+        
+        # VALOR NUMÉRICO (Corrección: ln=0 evita que el cursor salte a la izquierda)
         self.set_xy(x, y + 4)
         self.set_font('Arial', 'B', 14); self.set_text_color(0, 120, 80)
-        self.cell(46, 8, value, 0, 1, 'C')
+        self.cell(45, 8, str(value), border=0, ln=0, align='C')
+        
+        # ETIQUETA INFERIOR (Coordenadas exactas bajo el número)
+        self.set_xy(x, y + 12)
         self.set_font('Arial', '', 8); self.set_text_color(120, 120, 120)
-        self.cell(46, 5, label, 0, 0, 'C')
+        self.cell(45, 5, str(label), border=0, ln=0, align='C')
 
 def generate_pdf_base64(d):
     pdf = FlowBioReport()
@@ -90,8 +97,9 @@ def generate_pdf_base64(d):
     
     # SECCIÓN 1: IMPACTO FINANCIERO
     pdf.draw_section_header('Impacto Economico Anual Proyectado')
-    pdf.set_font('Arial', 'B', 26); self_text_color = (0, 0, 0)
+    pdf.set_font('Arial', 'B', 26); pdf.set_text_color(0, 150, 100)
     pdf.cell(0, 18, f"${d['ahorro']:,.0f} USD/año", 0, 1, 'L')
+    
     pdf.draw_metric_card("ROI Estimado", "15%", 10, 85)
     pdf.draw_metric_card("Ahorro/bbl", "$2.57", 58, 85)
     pdf.draw_metric_card("OPEX Actual", "$19.80", 106, 85)
@@ -100,6 +108,7 @@ def generate_pdf_base64(d):
     # SECCIÓN 2: REOLOGÍA Y FÍSICA
     pdf.set_xy(10, 115)
     pdf.draw_section_header('Analisis Reologico - Motor PIML')
+    
     pdf.draw_metric_card("Indice flujo (n)", str(d['n']), 10, 132)
     pdf.draw_metric_card("Consistencia K", f"{d['k']} mPas", 58, 132)
     pdf.draw_metric_card("Ratio movilidad", str(d['m_ratio']), 106, 132)
@@ -108,10 +117,11 @@ def generate_pdf_base64(d):
     # SECCIÓN 3: TABLA COMPARATIVA
     pdf.set_xy(10, 165)
     pdf.draw_section_header('Comparativa de Operatividad')
-    pdf.set_font('Arial', 'B', 9); pdf.set_fill_color(240, 240, 240)
+    pdf.set_font('Arial', 'B', 9); pdf.set_fill_color(240, 240, 240); pdf.set_text_color(0, 0, 0)
     pdf.cell(50, 9, "Atributo", 1, 0, 'C', True)
     pdf.cell(70, 9, "HPAM Sintetico", 1, 0, 'C', True)
     pdf.cell(70, 9, "FlowBio Na-CMC", 1, 1, 'C', True)
+    
     pdf.set_font('Arial', '', 9)
     comparisons = [
         ["Biodegradabilidad", "No biodegradable", "100% biodegradable"],
@@ -126,13 +136,13 @@ def generate_pdf_base64(d):
     pdf.set_font('Arial', '', 10.5); pdf.set_text_color(50, 50, 50)
     conclu = (f"El analisis de los {d['pozos']} pozos arroja una viabilidad tecnica superior para el uso de Na-CMC. "
               f"Se estima una recuperacion EUR adicional de {d['eur']:,.0f} barriles en 5 años, con una reduccion "
-              "critica de la huella de carbono operacional.")
+              "critica de la huella de carbono operacional y mitigando los problemas de corrosion mpy.")
     pdf.multi_cell(0, 7, conclu)
 
     return base64.b64encode(pdf.output(dest="S").encode("latin-1")).decode()
 
 # ══════════════════════════════════════════════════════
-# 4. PANTALLAS
+# 4. NAVEGACIÓN Y DASHBOARD
 # ══════════════════════════════════════════════════════
 if st.session_state.screen == 'splash':
     st.markdown("""<div style="height:60vh; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; color:white; padding-bottom:40px;">
@@ -158,6 +168,7 @@ elif st.session_state.screen == 'setup':
 elif st.session_state.screen == 'dash':
     d = st.session_state.data
     st.markdown(f"<h2 style='font-family:Syne; margin:20px; color:white;'>Command Center <span style='font-size:12px; color:#22D3EE;'>[PIML ENGINE VALIDATED]</span></h2>", unsafe_allow_html=True)
+    
     k1, k2, k3, k4 = st.columns(4)
     with k1: st.markdown(f'<div class="kpi-box"><p class="kpi-label">AHORRO OPEX / AÑO</p><p class="kpi-value" style="color:#00E5A0;">${d["ahorro"]:,.0f}</p></div>', unsafe_allow_html=True)
     with k2: st.markdown(f'<div class="kpi-box" style="border-top-color:#3B82F6;"><p class="kpi-label">MEJORA PROMEDIO</p><p class="kpi-value">+{d["mejora"]:.1f}%</p></div>', unsafe_allow_html=True)
@@ -186,6 +197,7 @@ elif st.session_state.screen == 'dash':
             <p style="font-size:10px; color:#64748B; font-weight:700;">DATOS TECNICOS</p>
             <p style="font-size:9px; color:#475569; margin-top:15px;">RESERVAS EUR (5A)</p><p style="font-family:'Syne'; font-size:26px; color:#22D3EE; margin:0;">{d['eur']:,.0f}</p>
             <p style="font-size:9px; color:#475569; margin-top:15px;">CONSISTENCIA K</p><p style="font-family:'Syne'; font-size:26px; color:#00E5A0; margin:0;">{d['k']}</p></div>""", unsafe_allow_html=True)
+        
         pdf_b64 = generate_pdf_base64(d)
-        st.markdown(f'<br><a href="data:application/pdf;base64,{pdf_b64}" download="FlowBio_Consultancy_Report.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 DESCARGAR REPORTE ESTRATEGICO</button></a>', unsafe_allow_html=True)
+        st.markdown(f'<br><a href="data:application/pdf;base64,{pdf_b64}" download="FlowBio_Consultancy_Report.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 DESCARGAR REPORTE OFICIAL</button></a>', unsafe_allow_html=True)
         if st.button("🏠 INICIO"): st.session_state.screen = 'splash'; st.rerun()
