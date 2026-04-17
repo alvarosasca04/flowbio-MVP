@@ -6,16 +6,14 @@ from fpdf import FPDF
 # ══════════════════════════════════════════════════════
 # 1. IDENTIDAD VISUAL PREMIUM FLOWBIO (CSS)
 # ══════════════════════════════════════════════════════
-st.set_page_config(page_title="FlowBio Subsurface OS", page_icon="🧬", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="FlowBio Subsurface OS", page_icon="🧬", layout="wide")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Syne:wght@700;800&family=DM+Mono&display=swap');
-    [data-testid="stHeader"], footer { display: none !important; }
+    [data-testid="stHeader"], [data-testid="stSidebar"], footer { display: none !important; }
     .stApp { background: #060B11; }
     .block-container { padding: 2rem 3rem !important; max-width: 100vw !important; }
-    
-    [data-testid="stSidebar"] { background-color: #0D1520 !important; border-right: 1px solid rgba(0,229,160,0.2); }
     
     .kpi-box {
         background: rgba(13, 21, 32, 0.8); border: 1px solid rgba(255, 255, 255, 0.05);
@@ -32,6 +30,11 @@ st.markdown("""
         width: 100%; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;
     }
     .stButton > button:hover { box-shadow: 0 0 25px rgba(0,229,160,0.4); transform: translateY(-2px); }
+    
+    /* Estilizar el buscador para que se vea premium */
+    div[data-baseweb="select"] > div {
+        background-color: #0D1520; border: 1px solid #00E5A0; color: white; border-radius: 8px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -131,108 +134,29 @@ if st.session_state.screen == 'splash':
             st.rerun()
 
 elif st.session_state.screen == 'dash':
-    # --- SIDEBAR: BUSCADOR REAL E INDEPENDIENTE ---
-    st.sidebar.markdown("<h3 style='font-family:Syne; color:#00E5A0;'>🧬 DATA LAKE</h3>", unsafe_allow_html=True)
-    st.sidebar.markdown("<hr style='opacity:0.2; margin-top:5px; margin-bottom:15px;'>", unsafe_allow_html=True)
     
-    # 1. BARRA DE BÚSQUEDA EXPLÍCITA (Input de texto visible)
-    search_query = st.sidebar.text_input("🔍 Buscar pozo por nombre:", placeholder="Ej. Piper, Norte, 15/17...")
+    # --- CABECERA PRINCIPAL Y BUSCADOR CENTRAL ---
+    col_t, col_btn = st.columns([4, 1])
+    with col_t:
+        st.markdown("<h2 style='font-family:Syne; margin-bottom:10px; color:white;'>Command Center</h2>", unsafe_allow_html=True)
+    with col_btn:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🔌 DESCONECTAR"):
+            st.session_state.screen = 'splash'
+            st.rerun()
+
+    st.markdown("<p style='color:#64748B; font-weight:600; font-size:14px;'>🔍 Haz clic en la caja de abajo y escribe para buscar el pozo a analizar:</p>", unsafe_allow_html=True)
     
-    # 2. Lógica de Filtrado
-    if search_query:
-        filtered_wells = [well for well in AGENT_DATA.keys() if search_query.lower() in well.lower()]
-    else:
-        filtered_wells = list(AGENT_DATA.keys())
-        
-    # 3. Manejo de resultados vacíos
-    if len(filtered_wells) == 0:
-        st.sidebar.warning("⚠️ No se encontraron pozos con ese nombre.")
-        st.stop()
-        
-    # 4. SELECTOR DE RESULTADOS VISIBLE
-    selected_well = st.sidebar.selectbox("🎯 Selecciona el pozo para analizar:", filtered_wells)
+    # 🌟 AQUÍ ESTÁ EL BUSCADOR EN EL CENTRO DE LA PANTALLA 🌟
+    selected_well = st.selectbox(
+        "", 
+        list(AGENT_DATA.keys()),
+        label_visibility="collapsed"
+    )
     d = AGENT_DATA[selected_well]
     
-    st.sidebar.markdown("<br><br><br>", unsafe_allow_html=True)
-    st.sidebar.markdown("<hr style='opacity:0.2;'>", unsafe_allow_html=True)
-    if st.sidebar.button("🔌 DESCONECTAR"):
-        st.session_state.screen = 'splash'
-        st.rerun()
-
-    # --- CABECERA PRINCIPAL ---
-    st.markdown("<h2 style='font-family:Syne; margin-bottom:0px; color:white;'>Command Center</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#22D3EE; font-family:\"DM Mono\"; font-size:14px; margin-bottom:20px;'>[" + str(d['label']) + "] ➔ " + str(selected_well) + "</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#22D3EE; font-family:\"DM Mono\"; font-size:12px; margin-top:10px; margin-bottom:20px;'>STATUS: [" + str(d['label']) + "]</p>", unsafe_allow_html=True)
     
     # --- KPIs ---
     k1, k2, k3, k4 = st.columns(4)
-    with k1: st.markdown('<div class="kpi-box"><p class="kpi-label">AHORRO OPEX / AÑO</p><p class="kpi-value" style="color:#00E5A0;">$' + f"{d['ahorro']:,.0f}" + '</p></div>', unsafe_allow_html=True)
-    with k2: st.markdown('<div class="kpi-box" style="border-top-color:#3B82F6;"><p class="kpi-label">MEJORA PROYECTADA</p><p class="kpi-value">+' + f"{d['mejora']:.1f}" + '%</p></div>', unsafe_allow_html=True)
-    with k3: st.markdown('<div class="kpi-box" style="border-top-color:#22D3EE;"><p class="kpi-label">FEE MENSUAL USD</p><p class="kpi-value" style="color:#22D3EE;">$' + f"{d['fee']:,.0f}" + '</p></div>', unsafe_allow_html=True)
-    with k4: st.markdown('<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">ESG CO2 EVITADO</p><p class="kpi-value" style="color:#F59E0B;">' + str(d['co2']) + 't</p></div>', unsafe_allow_html=True)
-
-    # --- GRÁFICA Y ARGUMENTOS DE VENTA ---
-    cl, cr = st.columns([2.5, 1.5])
-    with cl:
-        HTML_CHART = """
-        <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-        <div id="plot" style="height:500px; border-radius:12px; background:#0D1520; border:1px solid rgba(255,255,255,0.05); margin-top:20px;"></div>
-        <script>
-            var x = Array.from({length:40}, (_,i)=>i);
-            var base = __BASE_BPD__;
-            var mejora = __MEJORA_PCT__;
-            var y1 = x.map(i => base * Math.exp(-0.06*i));
-            var y2 = x.map(i => i<5 ? y1[i] : y1[i] + (base * mejora * Math.exp(-0.015*(i-5))));
-            Plotly.newPlot('plot', [
-                {x:x, y:y1, type:'scatter', line:{color:'#EF4444', dash:'dot', width:2}, name:'Base (HPAM)'},
-                {x:x, y:y2, type:'scatter', line:{color:'#00E5A0', width:4}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.1)', name:'FlowBio Na-CMC'}
-            ], { 
-                paper_bgcolor:'rgba(0,0,0,0)', 
-                plot_bgcolor:'rgba(0,0,0,0)', 
-                font:{color:'#64748B', family:'DM Mono'}, 
-                margin:{t:30, b:40, l:50, r:20}, 
-                xaxis:{gridcolor:'#1A2A3A'}, 
-                yaxis:{gridcolor:'#1A2A3A'},
-                hoverlabel: {bgcolor: '#060B11', font: {color: '#00E5A0'}, bordercolor: '#00E5A0'} 
-            }, {responsive: true, displayModeBar: false});
-        </script>
-        """.replace("__BASE_BPD__", str(d['bpd'])).replace("__MEJORA_PCT__", str(d['mejora']/100))
-        components.html(HTML_CHART, height=540)
-        
-    with cr:
-        html_insights = (
-            '<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); margin-top:20px; height:500px; display:flex; flex-direction:column; justify-content:space-between;">'
-            '<p style="font-size:12px; color:#00E5A0; font-weight:800; letter-spacing:1px; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">🧠 ENGINEERING INSIGHTS</p>'
-            
-            '<div style="margin-bottom:15px;">'
-            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Ratio de Movilidad (M)</p>'
-            '<p style="font-family:\'Syne\'; font-size:26px; color:#22D3EE; margin:0;">' + str(d['m_ratio']) + '</p>'
-            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Al ser < 1, previene la canalización de agua, forzando un barrido uniforme del crudo en la roca.</p>'
-            '</div>'
-            
-            '<div style="margin-bottom:15px;">'
-            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Índice de Flujo (n)</p>'
-            '<p style="font-family:\'Syne\'; font-size:26px; color:#F59E0B; margin:0;">' + str(d['n']) + '</p>'
-            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Comportamiento pseudoplástico: fluye fácil cerca del pozo (ahorra energía) y espesa en el yacimiento.</p>'
-            '</div>'
-            
-            '<div style="margin-bottom:15px;">'
-            '<p style="font-size:10px; color:#64748B; margin:0; text-transform:uppercase;">Reservas Adicionales (5A)</p>'
-            '<p style="font-family:\'Syne\'; font-size:26px; color:#00E5A0; margin:0;">' + f"{d['eur']:,.0f}" + ' <span style="font-size:14px; color:#64748B;">bbls</span></p>'
-            '<p style="font-size:11px; color:#8BA8C0; margin:0; line-height:1.4;">Petróleo incremental directo a la cuota de producción proyectada por la eficiencia de barrido.</p>'
-            '</div>'
-            '</div>'
-        )
-        st.markdown(html_insights, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        pdf_b64 = generate_pdf_base64(d, selected_well)
-        safe_filename = selected_well[:10].replace(" ", "_")
-        
-        btn_pdf = '<a href="data:application/pdf;base64,' + pdf_b64 + '" download="Reporte_' + safe_filename + '.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 DESCARGAR REPORTE DEL POZO</button></a>'
-        st.markdown(btn_pdf, unsafe_allow_html=True)
-        
-        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-        
-        if st.button("🏠 VOLVER AL INICIO"):
-            st.session_state.screen = 'splash'
-            st.rerun()
+    with k1: st
