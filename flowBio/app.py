@@ -135,7 +135,7 @@ if st.session_state.screen == 'splash':
 
 elif st.session_state.screen == 'dash':
     
-    # --- CABECERA PRINCIPAL Y BUSCADOR CENTRAL ---
+    # --- CABECERA PRINCIPAL Y BOTÓN DESCONECTAR ---
     col_t, col_btn = st.columns([4, 1])
     with col_t:
         st.markdown("<h2 style='font-family:Syne; margin-bottom:10px; color:white;'>Command Center</h2>", unsafe_allow_html=True)
@@ -147,7 +147,7 @@ elif st.session_state.screen == 'dash':
 
     st.markdown("<p style='color:#64748B; font-weight:600; font-size:14px;'>🔍 Haz clic en la caja de abajo y escribe para buscar el pozo a analizar:</p>", unsafe_allow_html=True)
     
-    # 🌟 AQUÍ ESTÁ EL BUSCADOR EN EL CENTRO DE LA PANTALLA 🌟
+    # 🌟 BUSCADOR EN EL CENTRO DE LA PANTALLA 🌟
     selected_well = st.selectbox(
         "", 
         list(AGENT_DATA.keys()),
@@ -159,4 +159,35 @@ elif st.session_state.screen == 'dash':
     
     # --- KPIs ---
     k1, k2, k3, k4 = st.columns(4)
-    with k1: st
+    with k1: 
+        st.markdown('<div class="kpi-box"><p class="kpi-label">AHORRO OPEX / AÑO</p><p class="kpi-value" style="color:#00E5A0;">$' + f"{d['ahorro']:,.0f}" + '</p></div>', unsafe_allow_html=True)
+    with k2: 
+        st.markdown('<div class="kpi-box" style="border-top-color:#3B82F6;"><p class="kpi-label">MEJORA PROYECTADA</p><p class="kpi-value">+' + f"{d['mejora']:.1f}" + '%</p></div>', unsafe_allow_html=True)
+    with k3: 
+        st.markdown('<div class="kpi-box" style="border-top-color:#22D3EE;"><p class="kpi-label">FEE MENSUAL USD</p><p class="kpi-value" style="color:#22D3EE;">$' + f"{d['fee']:,.0f}" + '</p></div>', unsafe_allow_html=True)
+    with k4: 
+        st.markdown('<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">ESG CO2 EVITADO</p><p class="kpi-value" style="color:#F59E0B;">' + str(d['co2']) + 't</p></div>', unsafe_allow_html=True)
+
+    # --- GRÁFICA Y ARGUMENTOS DE VENTA ---
+    cl, cr = st.columns([2.5, 1.5])
+    with cl:
+        HTML_CHART = """
+        <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+        <div id="plot" style="height:500px; border-radius:12px; background:#0D1520; border:1px solid rgba(255,255,255,0.05); margin-top:20px;"></div>
+        <script>
+            var x = Array.from({length:40}, (_,i)=>i);
+            var base = __BASE_BPD__;
+            var mejora = __MEJORA_PCT__;
+            var y1 = x.map(i => base * Math.exp(-0.06*i));
+            var y2 = x.map(i => i<5 ? y1[i] : y1[i] + (base * mejora * Math.exp(-0.015*(i-5))));
+            Plotly.newPlot('plot', [
+                {x:x, y:y1, type:'scatter', line:{color:'#EF4444', dash:'dot', width:2}, name:'Base (HPAM)'},
+                {x:x, y:y2, type:'scatter', line:{color:'#00E5A0', width:4}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.1)', name:'FlowBio Na-CMC'}
+            ], { 
+                paper_bgcolor:'rgba(0,0,0,0)', 
+                plot_bgcolor:'rgba(0,0,0,0)', 
+                font:{color:'#64748B', family:'DM Mono'}, 
+                margin:{t:30, b:40, l:50, r:20}, 
+                xaxis:{gridcolor:'#1A2A3A'}, 
+                yaxis:{gridcolor:'#1A2A3A'},
+                hoverlabel: {bgcolor: '#060B11', font: {color: '#00E5A0'}, bordercolor: '#00E5A0'}
