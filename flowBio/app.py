@@ -153,18 +153,17 @@ elif st.session_state.screen == 'dash':
         st.session_state.screen = 'splash'
         st.rerun()
 
-    st.markdown(f"<h2 style='font-family:Syne; margin-bottom:0px; color:white;'>Command Center</h2>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color:#22D3EE; font-family:\"DM Mono\"; font-size:14px; margin-bottom:20px;'>[{d['label']}] ➔ {selected_well}</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='font-family:Syne; margin-bottom:0px; color:white;'>Command Center</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#22D3EE; font-family:\"DM Mono\"; font-size:14px; margin-bottom:20px;'>[" + str(d['label']) + "] ➔ " + str(selected_well) + "</p>", unsafe_allow_html=True)
     
     k1, k2, k3, k4 = st.columns(4)
-    with k1: st.markdown(f'<div class="kpi-box"><p class="kpi-label">AHORRO OPEX / AÑO</p><p class="kpi-value" style="color:#00E5A0;">${d["ahorro"]:,.0f}</p></div>', unsafe_allow_html=True)
-    with k2: st.markdown(f'<div class="kpi-box" style="border-top-color:#3B82F6;"><p class="kpi-label">MEJORA PROYECTADA</p><p class="kpi-value">+{d["mejora"]:.1f}%</p></div>', unsafe_allow_html=True)
-    with k3: st.markdown(f'<div class="kpi-box" style="border-top-color:#22D3EE;"><p class="kpi-label">FEE MENSUAL USD</p><p class="kpi-value" style="color:#22D3EE;">${d["fee"]:,.0f}</p></div>', unsafe_allow_html=True)
-    with k4: st.markdown(f'<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">ESG CO2 EVITADO</p><p class="kpi-value" style="color:#F59E0B;">{d["co2"]}t</p></div>', unsafe_allow_html=True)
+    with k1: st.markdown('<div class="kpi-box"><p class="kpi-label">AHORRO OPEX / AÑO</p><p class="kpi-value" style="color:#00E5A0;">$' + f"{d['ahorro']:,.0f}" + '</p></div>', unsafe_allow_html=True)
+    with k2: st.markdown('<div class="kpi-box" style="border-top-color:#3B82F6;"><p class="kpi-label">MEJORA PROYECTADA</p><p class="kpi-value">+' + f"{d['mejora']:.1f}" + '%</p></div>', unsafe_allow_html=True)
+    with k3: st.markdown('<div class="kpi-box" style="border-top-color:#22D3EE;"><p class="kpi-label">FEE MENSUAL USD</p><p class="kpi-value" style="color:#22D3EE;">$' + f"{d['fee']:,.0f}" + '</p></div>', unsafe_allow_html=True)
+    with k4: st.markdown('<div class="kpi-box" style="border-top-color:#F59E0B;"><p class="kpi-label">ESG CO2 EVITADO</p><p class="kpi-value" style="color:#F59E0B;">' + str(d['co2']) + 't</p></div>', unsafe_allow_html=True)
 
     cl, cr = st.columns([3, 1])
     with cl:
-        # Se elimina el uso de llaves en f-string y se usa .replace() para evitar SyntaxError de Python
         HTML_CHART = """
         <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
         <div id="plot" style="height:480px; border-radius:12px; background:#0D1520; border:1px solid rgba(255,255,255,0.05); margin-top:20px;"></div>
@@ -184,9 +183,22 @@ elif st.session_state.screen == 'dash':
         components.html(HTML_CHART, height=520)
         
     with cr:
-        st.markdown(f"""
-        <div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid #1A2A3A; margin-top:20px;">
-            <p style="font-size:10px; color:#64748B; font-weight:700; letter-spacing:1px;">FÍSICA DEL POZO</p>
-            <p style="font-size:9px; color:#475569; margin-top:15px;">RATIO DE MOVILIDAD</p>
-            <p style="font-family:'Syne'; font-size:26px; color:#22D3EE; margin:0;">{d['m_ratio']}</p>
-            <p style="font-size:9px; color:#475569; margin-top:15px;">ÍNDICE
+        # Se elimina el uso de f-strings en bloques HTML largos para asegurar que el servidor no falle
+        html_fisica = (
+            '<div style="background:#0D1520; padding:25px; border-radius:12px; border:1px solid #1A2A3A; margin-top:20px;">'
+            '<p style="font-size:10px; color:#64748B; font-weight:700; letter-spacing:1px;">FÍSICA DEL POZO</p>'
+            '<p style="font-size:9px; color:#475569; margin-top:15px;">RATIO DE MOVILIDAD</p>'
+            '<p style="font-family:\'Syne\'; font-size:26px; color:#22D3EE; margin:0;">' + str(d['m_ratio']) + '</p>'
+            '<p style="font-size:9px; color:#475569; margin-top:15px;">ÍNDICE DE FLUJO (n)</p>'
+            '<p style="font-family:\'Syne\'; font-size:26px; color:#F59E0B; margin:0;">' + str(d['n']) + '</p>'
+            '<hr style="opacity:0.1; margin: 15px 0;">'
+            '<p style="font-size:9px; color:#475569;">RESERVAS EUR (5A)</p>'
+            '<p style="font-family:\'Syne\'; font-size:26px; color:#00E5A0; margin:0;">' + f"{d['eur']:,.0f}" + ' bbls</p>'
+            '</div>'
+        )
+        st.markdown(html_fisica, unsafe_allow_html=True)
+        
+        pdf_b64 = generate_pdf_base64(d, selected_well)
+        safe_filename = selected_well[:10].replace(" ", "_")
+        btn_html = '<br><a href="data:application/pdf;base64,' + pdf_b64 + '" download="Reporte_' + safe_filename + '.pdf" style="text-decoration:none;"><button style="background:#00E5A0; border:none; padding:15px; border-radius:8px; width:100%; color:#060B11; font-weight:800; cursor:pointer;">📥 REPORTE DEL POZO</button></a>'
+        st.markdown(btn_html, unsafe_allow_html=True)
