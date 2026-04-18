@@ -1,10 +1,10 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import json
 import boto3
 import math
 from fpdf import FPDF
 from datetime import datetime
-import streamlit.components.v1 as components
 
 # ══════════════════════════════════════════════════════
 # 1. CONFIGURACIÓN Y ESTILOS
@@ -62,6 +62,7 @@ if 'auth' not in st.session_state:
     st.session_state.auth = False
 
 if not st.session_state.auth:
+    # PANTALLA DE ACCESO
     st.markdown("<div style='text-align:center; margin-top:20vh;'><h1 style='color:white; font-family:Syne; font-size:80px;'>FlowBio<span style='color:#00E5A0'>.</span></h1></div>", unsafe_allow_html=True)
     _, c, _ = st.columns([1, 0.8, 1])
     with c:
@@ -73,12 +74,21 @@ if not st.session_state.auth:
                     st.session_state.auth = True
                     st.rerun()
 else:
-    st.markdown("## Command Center")
+    # DASHBOARD PRINCIPAL
+    c_title, c_logout = st.columns([4, 1])
+    with c_title:
+        st.markdown("## Command Center")
+    with c_logout:
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+        if st.button("🏠 CERRAR SESIÓN"):
+            st.session_state.auth = False  # Destruye la sesión
+            st.rerun()                     # Recarga la app al inicio
+
     wells = list(st.session_state.all_data.keys())
     s_well = st.selectbox("Activo:", wells)
     d = st.session_state.all_data[s_well]
     
-    # KPIs EXPLICADOS (Método seguro)
+    # KPIs EXPLICADOS
     k1, k2, k3, k4 = st.columns(4)
     with k1: 
         st.markdown(f'<div class="kpi-box"><p class="kpi-label">AHORRO OPEX</p><p class="kpi-value">${d["ahorro"]:,}</p><p class="kpi-desc">Reducción en costos de inyección y tratamiento.</p></div>', unsafe_allow_html=True)
@@ -92,7 +102,7 @@ else:
     cl, cr = st.columns([2.3, 1.7])
     
     with cl:
-        # Gráfica (Método seguro de lista)
+        # Gráfica segura
         script_parts = [
             "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>",
             "<div id='plot' style='height:400px; background:#0D1520; border-radius:12px; border:1px solid rgba(255,255,255,0.05);'></div>",
@@ -109,7 +119,7 @@ else:
         components.html("".join(script_parts), height=420)
         
     with cr:
-        # Insights Explicados (Método seguro de lista)
+        # Insights Explicados
         html_parts = [
             "<div style='background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); height:415px;'>",
             "<p style='color:#00E5A0; font-weight:800; font-size:12px;'>🧠 ENGINEERING INSIGHTS</p>",
@@ -118,7 +128,8 @@ else:
             f"<p style='font-family:\"DM Mono\"; font-size:14px; color:#22D3EE; margin-bottom:2px;'>YP: {d['yield_p']} lb/ft2</p>",
             "<p style='font-size:11px; color:#8BA8C0; margin-top:0px; margin-bottom:15px;'>Garantiza estabilidad bajo presión de fondo.</p>",
             "<hr style='opacity:0.1; margin:15px 0;'>",
-            f"<p style='color:#64748B; font-size:10px; font-weight:600;'>INCREMENTAL: <span style='color:#00E5A0; font-size:24px;'>{d['eur']:,}</span> bbls</p>",
+            f"<p style='color:#64748B; font-size:10px; font-weight:600;'>INCREMENTAL TOTAL (EUR):</p>",
+            f"<p style='color:#00E5A0; font-size:32px; font-weight:800; margin:0;'>{d['eur']:,} <span style='font-size:14px; color:#64748B;'>bbls</span></p>",
             "</div>"
         ]
         st.markdown("".join(html_parts), unsafe_allow_html=True)
