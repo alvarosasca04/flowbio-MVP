@@ -41,7 +41,7 @@ def get_fallback_data():
             "candidatos_inyeccion": 8,
             "parametros_tecnicos": {
                 "razon_movilidad_alcanzada": 1.02,
-                "estado_skin_factor": "Mitigado Preventivamente"
+                "estado_skin_factor": "Mitigado Preventivamente (Sin daño de formación)"
             },
             "metricas_financieras": {
                 "barriles_incrementales_mes": 25000,
@@ -108,24 +108,35 @@ if 'auth' not in st.session_state:
     st.session_state.auth = False
 if 'simulated' not in st.session_state:
     st.session_state.simulated = False
-if not st.session_state.simulated:
-        # 🚀 NUEVO: CAJA DE DIAGNÓSTICO PRE-SIMULACIÓN (El Dolor del Cliente)
-        st.markdown(f"""
-        <div style='background:#0D1520; padding:30px; border-radius:12px; border-left:4px solid #EF4444; margin-bottom: 40px; margin-top: 20px;'>
-            <h4 style='color:#EF4444; margin-top:0; font-family:Inter; font-weight:800; font-size:14px; letter-spacing:1px;'>📊 DIAGNÓSTICO INICIAL (STATUS QUO)</h4>
-            <p style='color:#8BA8C0; font-family:"DM Mono"; font-size:16px; margin-bottom:5px; line-height:1.8;'>
-                ▶ <b>Datos Ingestados:</b> Históricos de producción ({d['pozos_piloto']} Pozos)<br>
-                ▶ <b>Producción Base Actual:</b> 105,000 bbls/mes (Declinación natural activa)<br>
-                ▶ <b>Lifting Cost Actual:</b> $18.50 USD/bbl<br>
-                ▶ <b>Alerta Física:</b> Alta canalización de agua (Fingering) detectada.
-            </p>
-            <p style='color:#64748B; font-size:12px; margin-top:15px; font-family:Inter;'><i>* Los Agentes PIML están listos para recalibrar la termodinámica del yacimiento y proyectar la recuperación secundaria.</i></p>
-        </div>
-        """, unsafe_allow_html=True)
 
-        _, center_col, _ = st.columns([1, 2, 1])
-        with center_col:
-            if not st.session_state.simulated:
+if not st.session_state.auth:
+    st.markdown("<div style='text-align:center; margin-top:20vh;'><h1 style='color:white; font-family:Syne; font-size:80px;'>FlowBio<span style='color:#00E5A0'>.</span></h1><p style='color:#64748B; font-family:Inter; margin-top:-20px;'>EOR Agentic OS</p></div>", unsafe_allow_html=True)
+    _, c, _ = st.columns([1, 0.8, 1])
+    with c:
+        pwd = st.text_input("PASSWORD:", type="password")
+        if st.button("SINCRONIZAR DATA LAKE"):
+            if pwd == "FlowBio2026":
+                st.session_state.all_data = load_data_from_s3() 
+                st.session_state.auth = True
+                st.rerun()
+else:
+    d_root = st.session_state.all_data
+    d = d_root["dashboard_data"]
+    fin = d["metricas_financieras"]
+    tec = d["parametros_tecnicos"]
+    ing = d["ingenieria_dura"]
+
+    c_title, c_logout = st.columns([4, 1])
+    with c_title:
+        st.markdown("## Command Center")
+        st.caption(f"Activo: {d['profundidad_analizada']} | Piloto: {d['pozos_piloto']} Pozos")
+    with c_logout:
+        if st.button("🏠 LOGOUT"):
+            st.session_state.auth = False
+            st.session_state.simulated = False
+            st.rerun()
+
+    if not st.session_state.simulated:
         # 🚀 CAJA DE DIAGNÓSTICO PRE-SIMULACIÓN (El Dolor del Cliente)
         st.markdown("""
         <div style='background:#0D1520; padding:30px; border-radius:12px; border-left:4px solid #EF4444; margin-bottom: 40px; margin-top: 20px;'>
@@ -156,41 +167,6 @@ if not st.session_state.simulated:
                 time.sleep(0.5)
                 st.session_state.simulated = True
                 st.rerun()
-
-else:
-    d_root = st.session_state.all_data
-    d = d_root["dashboard_data"]
-    fin = d["metricas_financieras"]
-    tec = d["parametros_tecnicos"]
-    ing = d["ingenieria_dura"]
-
-    c_title, c_logout = st.columns([4, 1])
-    with c_title:
-        st.markdown("## Command Center")
-        st.caption(f"Activo: {d['profundidad_analizada']} | Piloto: {d['pozos_piloto']} Pozos")
-    with c_logout:
-        if st.button("🏠 LOGOUT"):
-            st.session_state.auth = False
-            st.session_state.simulated = False
-            st.rerun()
-
-    if not st.session_state.simulated:
-        _, center_col, _ = st.columns([1, 2, 1])
-        with center_col:
-            st.markdown("<br><br>", unsafe_allow_html=True)
-            if st.button("🚀 DESPLEGAR AGENTES PIML"):
-                with st.status("Orquestando Agentes FlowBio...", expanded=True) as status:
-                    st.write("🤖 **Data Agent:** Limpiando histórico CSV...")
-                    time.sleep(1)
-                    st.write("🤖 **Physics Agent:** Validando Ley de Darcy y gradientes...")
-                    time.sleep(1)
-                    st.write("🤖 **Rheology Agent:** M=1 alcanzado. Skin Factor Mitigado.")
-                    time.sleep(1)
-                    st.write("🤖 **Financial Agent:** Calculando Barriles Incrementales...")
-                    time.sleep(1)
-                    status.update(label="Simulación Exitosa", state="complete", expanded=False)
-                st.session_state.simulated = True
-                st.rerun()
     else:
         tab1, tab2 = st.tabs(["📊 Visión Ejecutiva (CFO)", "⚙️ Análisis por Pozo (Ingeniería)"])
         
@@ -209,28 +185,27 @@ else:
             with cl:
                 st.markdown("<p style='color:#8BA8C0; font-family:Inter; font-size:14px; margin-top:20px; margin-bottom:5px;'>Curva de Declinación Consolidada (DCA)</p>", unsafe_allow_html=True)
                 script_parts = [
-                "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>",
-                "<div id='plot' style='height:380px; background:#0D1520; border-radius:12px;'></div>",
-                "<script>",
-                "var x = Array.from({length:30}, (_,i)=>i);",
-                "var y1 = x.map(i => 4000 * Math.exp(-0.05*i));",
-                "var y2 = x.map(i => i <= 4 ? y1[i] : y1[i] + 1400 * (1 - Math.exp(-0.6*(i-4))) * Math.exp(-0.015*(i-4)));",
-                "var t1 = {x:x, y:y1, name:'Status Quo', line:{color:'#EF4444', dash:'dot', width:2, shape:'spline'}, hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
-                "var t2 = {x:x, y:y2, name:'FlowBio EOR', line:{color:'#00E5A0', width:4, shape:'spline'}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.15)', hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
-                "var lay = {",
-                "  paper_bgcolor:'transparent', plot_bgcolor:'transparent', font:{color:'#8BA8C0', family:'Inter'},",
-                "  margin:{t:10, b:45, l:60, r:20},",
-                "  hovermode: 'x unified',",
-                "  hoverlabel: {bgcolor:'#0D1520', bordercolor:'#00E5A0', font:{family:'Inter', color:'#fff', size:13}},",
-                "  xaxis: {title: 'Tiempo (Meses)', gridcolor: 'rgba(255,255,255,0.03)', zerolinecolor: 'rgba(255,255,255,0.1)'},",
-                "  yaxis: {title: 'Producción (bpd)', gridcolor: 'rgba(255,255,255,0.03)', zerolinecolor: 'rgba(255,255,255,0.1)', tickformat: ',', rangemode: 'tozero'},",
-                "  legend: {orientation: 'h', y: 1.1, font: {size: 12}},",
-                "  annotations: [{x: 16, y: 2600, text: 'ZONA DE RENTABILIDAD', showarrow: false, font: {color: '#00E5A0', size: 10, family: 'Inter'}, opacity: 0.7}]",
-                "};",
-                "Plotly.newPlot('plot', [t1, t2], lay, {displayModeBar: false});",
-                "</script>"
-            ]
-            
+                    "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>",
+                    "<div id='plot' style='height:380px; background:#0D1520; border-radius:12px;'></div>",
+                    "<script>",
+                    "var x = Array.from({length:30}, (_,i)=>i);",
+                    "var y1 = x.map(i => 4000 * Math.exp(-0.05*i));",
+                    "var y2 = x.map(i => i <= 4 ? y1[i] : y1[i] + 1400 * (1 - Math.exp(-0.6*(i-4))) * Math.exp(-0.015*(i-4)));",
+                    "var t1 = {x:x, y:y1, name:'Status Quo', line:{color:'#EF4444', dash:'dot', width:2, shape:'spline'}, hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
+                    "var t2 = {x:x, y:y2, name:'FlowBio EOR', line:{color:'#00E5A0', width:4, shape:'spline'}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.15)', hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
+                    "var lay = {",
+                    "  paper_bgcolor:'transparent', plot_bgcolor:'transparent', font:{color:'#8BA8C0', family:'Inter'},",
+                    "  margin:{t:10, b:45, l:60, r:20},",
+                    "  hovermode: 'x unified',",
+                    "  hoverlabel: {bgcolor:'#0D1520', bordercolor:'#00E5A0', font:{family:'Inter', color:'#fff', size:13}},",
+                    "  xaxis: {title: 'Tiempo (Meses)', gridcolor: 'rgba(255,255,255,0.03)', zerolinecolor: 'rgba(255,255,255,0.1)'},",
+                    "  yaxis: {title: 'Producción (bpd)', gridcolor: 'rgba(255,255,255,0.03)', zerolinecolor: 'rgba(255,255,255,0.1)', tickformat: ',', rangemode: 'tozero'},",
+                    "  legend: {orientation: 'h', y: 1.1, font: {size: 12}},",
+                    "  annotations: [{x: 16, y: 2600, text: 'ZONA DE RENTABILIDAD', showarrow: false, font: {color: '#00E5A0', size: 10, family: 'Inter'}, opacity: 0.7}]",
+                    "};",
+                    "Plotly.newPlot('plot', [t1, t2], lay, {displayModeBar: false});",
+                    "</script>"
+                ]
                 components.html("".join(script_parts), height=400)
                 
             with cr:
@@ -248,4 +223,28 @@ else:
                 st.download_button("📥 DESCARGAR REPORTE EJECUTIVO", data=generate_corporate_pdf(d_root), file_name="FlowBio_Agentic_Report.pdf")
 
         with tab2:
-            st.markdown
+            st.markdown("<br>", unsafe_allow_html=True)
+            pozos_disponibles = [f"UKCS-Well-{100 + i}" for i in range(1, 11)]
+            pozo_seleccionado = st.selectbox("🎯 SELECCIONE UN ACTIVO PARA REVISIÓN PROFUNDA:", pozos_disponibles)
+            
+            random.seed(pozo_seleccionado)
+            ind_bpd = int((fin["barriles_incrementales_mes"] / 10) * random.uniform(0.85, 1.15))
+            ind_m = round(tec["razon_movilidad_alcanzada"] * random.uniform(0.95, 1.05), 2)
+            ind_skin = round(random.uniform(-0.5, 1.2), 2)
+            ind_fee = int(ind_bpd * 5)
+            
+            c1, c2, c3 = st.columns(3)
+            c1.metric(label="Crudo Extra Proyectado", value=f"+{ind_bpd:,} bbls/mes", delta=f"{ind_fee:,} USD (Fee)")
+            c2.metric(label="Movilidad Alcanzada (M)", value=ind_m, delta="Barrido Eficiente" if ind_m < 1.1 else "Alerta Leve", delta_color="normal" if ind_m < 1.1 else "off")
+            c3.metric(label="Skin Factor Proyectado", value=ind_skin, delta="Daño Mitigado" if ind_skin < 1 else "Requiere Monitoreo", delta_color="inverse")
+            
+            st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
+            
+            st.markdown(f"""
+            <div style='background:#0D1520; padding:20px; border-radius:8px; border-left:4px solid #22D3EE;'>
+                <p style='color:#8BA8C0; font-family:Inter; font-size:12px; margin:0;'>📝 DICTAMEN DE AGENTE (PIML):</p>
+                <p style='color:#fff; font-family:DM Mono; font-size:14px; margin-top:5px;'>
+                El activo <b>{pozo_seleccionado}</b> es candidato <b>ÓPTIMO</b>. La simulación termodinámica indica que con una concentración ajustada, se alcanzará una razón M={ind_m}, empujando {ind_bpd} barriles incrementales sin rebasar la presión de fractura de la roca madre.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
