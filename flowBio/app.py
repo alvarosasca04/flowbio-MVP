@@ -31,7 +31,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════
-# 2. DATOS DE RESPALDO (DEMO MODE PARA LA UAG)
+# 2. DATOS DE RESPALDO (DEMO MODE)
 # ══════════════════════════════════════════════════════
 def get_fallback_data():
     return {
@@ -154,10 +154,8 @@ else:
                 st.session_state.simulated = True
                 st.rerun()
     else:
-        # SISTEMA DE PESTAÑAS (TABS) PARA DEMOSTRAR PROFUNDIDAD TÉCNICA
         tab1, tab2 = st.tabs(["📊 Visión Ejecutiva (CFO)", "⚙️ Análisis por Pozo (Ingeniería)"])
         
-        # --- PESTAÑA 1: EL NEGOCIO (Igual que antes) ---
         with tab1:
             k1, k2, k3, k4 = st.columns(4)
             with k1: 
@@ -173,33 +171,26 @@ else:
             with cl:
                 st.markdown("<p style='color:#8BA8C0; font-family:Inter; font-size:14px; margin-top:20px; margin-bottom:5px;'>Curva de Declinación Consolidada (DCA)</p>", unsafe_allow_html=True)
                 script_parts = [
-                "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>",
-                "<div id='plot' style='height:380px; background:#0D1520; border-radius:12px;'></div>",
-               
-            script_parts = [
-                "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>",
-                "<div id='plot' style='height:380px; background:#0D1520; border-radius:12px;'></div>",
-                "<script>",
-                "var x = Array.from({length:30}, (_,i)=>i);",
-                "var y1 = x.map(i => 4000 * Math.exp(-0.05*i));",
-                "var y2 = x.map(i => i <= 4 ? y1[i] : y1[i] + 1400 * (1 - Math.exp(-0.6*(i-4))) * Math.exp(-0.015*(i-4)));",
-                "var t1 = {x:x, y:y1, name:'Status Quo', line:{color:'#EF4444', dash:'dot', width:2, shape:'spline'}, hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
-                "var t2 = {x:x, y:y2, name:'FlowBio EOR', line:{color:'#00E5A0', width:4, shape:'spline'}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.15)', hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
-                "var lay = {",
-                "  paper_bgcolor:'transparent', plot_bgcolor:'transparent', font:{color:'#8BA8C0', family:'Inter'},",
-                "  margin:{t:10, b:45, l:60, r:20},",
-                "  hovermode: 'x unified',", // Magia UX: Línea vertical que compara ambas curvas
-                "  hoverlabel: {bgcolor:'#060B11', bordercolor:'#22D3EE', font:{family:'Inter', color:'#fff'}},", // Diseño del recuadro oscuro
-                "  xaxis: {title: 'Tiempo (Meses)', gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)'},",
-                "  yaxis: {title: 'Producción (bpd)', gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)', tickformat: ','},", // tickformat agrega las comas a los miles
-                "  legend: {orientation: 'h', y: 1.1, font: {size: 12}}",
-                "};",
-                // {displayModeBar: false} elimina la molesta barra superior de herramientas
-                "Plotly.newPlot('plot', [t1, t2], lay, {displayModeBar: false});",
-                "</script>"
-            ]
-               
-            
+                    "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>",
+                    "<div id='plot' style='height:380px; background:#0D1520; border-radius:12px;'></div>",
+                    "<script>",
+                    "var x = Array.from({length:30}, (_,i)=>i);",
+                    "var y1 = x.map(i => 4000 * Math.exp(-0.05*i));",
+                    "var y2 = x.map(i => i <= 4 ? y1[i] : y1[i] + 1400 * (1 - Math.exp(-0.6*(i-4))) * Math.exp(-0.015*(i-4)));",
+                    "var t1 = {x:x, y:y1, name:'Status Quo', line:{color:'#EF4444', dash:'dot', width:2, shape:'spline'}, hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
+                    "var t2 = {x:x, y:y2, name:'FlowBio EOR', line:{color:'#00E5A0', width:4, shape:'spline'}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.15)', hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
+                    "var lay = {",
+                    "  paper_bgcolor:'transparent', plot_bgcolor:'transparent', font:{color:'#8BA8C0', family:'Inter'},",
+                    "  margin:{t:10, b:45, l:60, r:20},",
+                    "  hovermode: 'x unified',",
+                    "  hoverlabel: {bgcolor:'#060B11', bordercolor:'#22D3EE', font:{family:'Inter', color:'#fff'}},",
+                    "  xaxis: {title: 'Tiempo (Meses)', gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)'},",
+                    "  yaxis: {title: 'Producción (bpd)', gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)', tickformat: ','},",
+                    "  legend: {orientation: 'h', y: 1.1, font: {size: 12}}",
+                    "};",
+                    "Plotly.newPlot('plot', [t1, t2], lay, {displayModeBar: false});",
+                    "</script>"
+                ]
                 components.html("".join(script_parts), height=400)
                 
             with cr:
@@ -216,31 +207,5 @@ else:
                 """, unsafe_allow_html=True)
                 st.download_button("📥 DESCARGAR REPORTE EJECUTIVO", data=generate_corporate_pdf(d_root), file_name="FlowBio_Agentic_Report.pdf")
 
-        # --- PESTAÑA 2: EL INGENIERO (Pozo por Pozo) ---
         with tab2:
-            st.markdown("<br>", unsafe_allow_html=True)
-            pozos_disponibles = [f"UKCS-Well-{100 + i}" for i in range(1, 11)]
-            pozo_seleccionado = st.selectbox("🎯 SELECCIONE UN ACTIVO PARA REVISIÓN PROFUNDA:", pozos_disponibles)
-            
-            # Generamos variaciones matemáticas leves basadas en la semilla del nombre del pozo para que parezcan datos reales distintos
-            random.seed(pozo_seleccionado)
-            ind_bpd = int((fin["barriles_incrementales_mes"] / 10) * random.uniform(0.85, 1.15))
-            ind_m = round(tec["razon_movilidad_alcanzada"] * random.uniform(0.95, 1.05), 2)
-            ind_skin = round(random.uniform(-0.5, 1.2), 2)
-            ind_fee = int(ind_bpd * 5)
-            
-            c1, c2, c3 = st.columns(3)
-            c1.metric(label="Crudo Extra Proyectado", value=f"+{ind_bpd:,} bbls/mes", delta=f"{ind_fee:,} USD (Fee)")
-            c2.metric(label="Movilidad Alcanzada (M)", value=ind_m, delta="Barrido Eficiente" if ind_m < 1.1 else "Alerta Leve", delta_color="normal" if ind_m < 1.1 else "off")
-            c3.metric(label="Skin Factor Proyectado", value=ind_skin, delta="Daño Mitigado" if ind_skin < 1 else "Requiere Monitoreo", delta_color="inverse")
-            
-            st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
-            
-            st.markdown(f"""
-            <div style='background:#0D1520; padding:20px; border-radius:8px; border-left:4px solid #22D3EE;'>
-                <p style='color:#8BA8C0; font-family:Inter; font-size:12px; margin:0;'>📝 DICTAMEN DE AGENTE (PIML):</p>
-                <p style='color:#fff; font-family:DM Mono; font-size:14px; margin-top:5px;'>
-                El activo <b>{pozo_seleccionado}</b> es candidato <b>ÓPTIMO</b>. La simulación termodinámica indica que con una concentración ajustada, se alcanzará una razón M={ind_m}, empujando {ind_bpd} barriles incrementales sin rebasar la presión de fractura de la roca madre.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown
