@@ -172,19 +172,27 @@ else:
             cl, cr = st.columns([2.3, 1.7])
             with cl:
                 st.markdown("<p style='color:#8BA8C0; font-family:Inter; font-size:14px; margin-top:20px; margin-bottom:5px;'>Curva de Declinación Consolidada (DCA)</p>", unsafe_allow_html=True)
+                
                 script_parts = [
-                    "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>",
-                    "<div id='plot' style='height:380px; background:#0D1520; border-radius:12px;'></div>",
-                    "<script>",
-                    "var x = Array.from({length:30}, (_,i)=>i);",
-                    "var y1 = x.map(i => 4000 * Math.exp(-0.05*i));",
-                    "var y2 = x.map(i => i<5 ? y1[i] : y1[i] + 1200 * Math.exp(-0.01*i));",
-                    "var t1 = {x:x, y:y1, name:'Status Quo', line:{color:'#EF4444', dash:'dot'}};",
-                    "var t2 = {x:x, y:y2, name:'FlowBio', line:{color:'#00E5A0', width:4}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.1)'};",
-                    "var lay = {paper_bgcolor:'transparent', plot_bgcolor:'transparent', font:{color:'#64748B'}, margin:{t:10, b:30, l:50, r:20}};",
-                    "Plotly.newPlot('plot', [t1, t2], lay);",
-                    "</script>"
-                ]
+                "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>",
+                "<div id='plot' style='height:380px; background:#0D1520; border-radius:12px;'></div>",
+                "<script>",
+                "var x = Array.from({length:30}, (_,i)=>i);",
+                "var y1 = x.map(i => 4000 * Math.exp(-0.05*i));", // Línea base (Status Quo)
+                // Matemática mejorada: Rampa suave (orgánica) de recuperación secundaria
+                "var y2 = x.map(i => i <= 4 ? y1[i] : y1[i] + 1400 * (1 - Math.exp(-0.6*(i-4))) * Math.exp(-0.015*(i-4)));",
+                "var t1 = {x:x, y:y1, name:'Status Quo', line:{color:'#EF4444', dash:'dot', width:2, shape:'spline'}};",
+                "var t2 = {x:x, y:y2, name:'FlowBio EOR', line:{color:'#00E5A0', width:4, shape:'spline'}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.15)'};",
+                "var lay = {",
+                "  paper_bgcolor:'transparent', plot_bgcolor:'transparent', font:{color:'#8BA8C0', family:'Inter'},",
+                "  margin:{t:10, b:45, l:60, r:20},",
+                "  xaxis: {title: 'Tiempo (Meses)', gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)'},",
+                "  yaxis: {title: 'Producción (bpd)', gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)'},",
+                "  legend: {orientation: 'h', y: 1.1, font: {size: 12}}",
+                "};",
+                "Plotly.newPlot('plot', [t1, t2], lay);",
+                "</script>"
+            ]
                 components.html("".join(script_parts), height=400)
                 
             with cr:
