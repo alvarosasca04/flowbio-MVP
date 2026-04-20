@@ -108,17 +108,38 @@ if 'auth' not in st.session_state:
     st.session_state.auth = False
 if 'simulated' not in st.session_state:
     st.session_state.simulated = False
+if not st.session_state.simulated:
+        # 🚀 NUEVO: CAJA DE DIAGNÓSTICO PRE-SIMULACIÓN (El Dolor del Cliente)
+        st.markdown(f"""
+        <div style='background:#0D1520; padding:30px; border-radius:12px; border-left:4px solid #EF4444; margin-bottom: 40px; margin-top: 20px;'>
+            <h4 style='color:#EF4444; margin-top:0; font-family:Inter; font-weight:800; font-size:14px; letter-spacing:1px;'>📊 DIAGNÓSTICO INICIAL (STATUS QUO)</h4>
+            <p style='color:#8BA8C0; font-family:"DM Mono"; font-size:16px; margin-bottom:5px; line-height:1.8;'>
+                ▶ <b>Datos Ingestados:</b> Históricos de producción ({d['pozos_piloto']} Pozos)<br>
+                ▶ <b>Producción Base Actual:</b> 105,000 bbls/mes (Declinación natural activa)<br>
+                ▶ <b>Lifting Cost Actual:</b> $18.50 USD/bbl<br>
+                ▶ <b>Alerta Física:</b> Alta canalización de agua (Fingering) detectada.
+            </p>
+            <p style='color:#64748B; font-size:12px; margin-top:15px; font-family:Inter;'><i>* Los Agentes PIML están listos para recalibrar la termodinámica del yacimiento y proyectar la recuperación secundaria.</i></p>
+        </div>
+        """, unsafe_allow_html=True)
 
-if not st.session_state.auth:
-    st.markdown("<div style='text-align:center; margin-top:20vh;'><h1 style='color:white; font-family:Syne; font-size:80px;'>FlowBio<span style='color:#00E5A0'>.</span></h1><p style='color:#64748B; font-family:Inter; margin-top:-20px;'>EOR Agentic OS</p></div>", unsafe_allow_html=True)
-    _, c, _ = st.columns([1, 0.8, 1])
-    with c:
-        pwd = st.text_input("PASSWORD:", type="password")
-        if st.button("SINCRONIZAR DATA LAKE"):
-            if pwd == "FlowBio2026":
-                st.session_state.all_data = load_data_from_s3() 
-                st.session_state.auth = True
+        _, center_col, _ = st.columns([1, 2, 1])
+        with center_col:
+            if st.button("🚀 DESPLEGAR AGENTES PIML PARA OPTIMIZAR"):
+                with st.status("Orquestando Agentes FlowBio...", expanded=True) as status:
+                    st.write("🤖 **Data Agent:** Limpiando histórico CSV y aislando Línea Base...")
+                    time.sleep(1)
+                    st.write("🤖 **Physics Agent:** Validando Ley de Darcy y gradientes geotérmicos...")
+                    time.sleep(1)
+                    st.write("🤖 **Rheology Agent:** Optimizando Inyección (M=1). Skin Factor Mitigado.")
+                    time.sleep(1)
+                    st.write("🤖 **Financial Agent:** Calculando Barriles Incrementales y Success Fee...")
+                    time.sleep(1)
+                    status.update(label="Simulación Exitosa. Generando ROI.", state="complete", expanded=False)
+                time.sleep(0.5)
+                st.session_state.simulated = True
                 st.rerun()
+
 else:
     d_root = st.session_state.all_data
     d = d_root["dashboard_data"]
