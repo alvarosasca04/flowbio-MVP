@@ -125,16 +125,33 @@ if not st.session_state.simulated:
 
         _, center_col, _ = st.columns([1, 2, 1])
         with center_col:
+            if not st.session_state.simulated:
+        # 🚀 CAJA DE DIAGNÓSTICO PRE-SIMULACIÓN (El Dolor del Cliente)
+        st.markdown("""
+        <div style='background:#0D1520; padding:30px; border-radius:12px; border-left:4px solid #EF4444; margin-bottom: 40px; margin-top: 20px;'>
+            <h4 style='color:#EF4444; margin-top:0; font-family:Inter; font-weight:800; font-size:14px; letter-spacing:1px;'>📊 DIAGNÓSTICO INICIAL (STATUS QUO)</h4>
+            <p style='color:#8BA8C0; font-family:"DM Mono"; font-size:16px; margin-bottom:5px; line-height:1.8;'>
+                ▶ <b>Datos Ingestados:</b> Históricos de producción (10 Pozos)<br>
+                ▶ <b>Producción Base Actual:</b> 105,000 bbls/mes (Declinación natural activa)<br>
+                ▶ <b>Lifting Cost Actual:</b> $18.50 USD/bbl<br>
+                ▶ <b>Alerta Física:</b> Alta canalización de agua (Fingering) detectada.
+            </p>
+            <p style='color:#64748B; font-size:12px; margin-top:15px; font-family:Inter;'><i>* Los Agentes PIML están listos para recalibrar la termodinámica del yacimiento y proyectar la recuperación secundaria.</i></p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        _, center_col, _ = st.columns([1, 2, 1])
+        with center_col:
             if st.button("🚀 DESPLEGAR AGENTES PIML PARA OPTIMIZAR"):
                 with st.status("Orquestando Agentes FlowBio...", expanded=True) as status:
                     st.write("🤖 **Data Agent:** Limpiando histórico CSV y aislando Línea Base...")
-                    time.sleep(1)
+                    time.sleep(1.2)
                     st.write("🤖 **Physics Agent:** Validando Ley de Darcy y gradientes geotérmicos...")
-                    time.sleep(1)
+                    time.sleep(1.5)
                     st.write("🤖 **Rheology Agent:** Optimizando Inyección (M=1). Skin Factor Mitigado.")
-                    time.sleep(1)
+                    time.sleep(1.2)
                     st.write("🤖 **Financial Agent:** Calculando Barriles Incrementales y Success Fee...")
-                    time.sleep(1)
+                    time.sleep(1.5)
                     status.update(label="Simulación Exitosa. Generando ROI.", state="complete", expanded=False)
                 time.sleep(0.5)
                 st.session_state.simulated = True
