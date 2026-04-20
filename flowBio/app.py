@@ -183,15 +183,16 @@ else:
                 "  paper_bgcolor:'transparent', plot_bgcolor:'transparent', font:{color:'#8BA8C0', family:'Inter'},",
                 "  margin:{t:10, b:45, l:60, r:20},",
                 "  hovermode: 'x unified',",
-                "  hoverlabel: {bgcolor:'#0D1520', bordercolor:'#00E5A0', font:{family:'Inter', color:'#fff', size:13}},", // Diseño más premium
+                "  hoverlabel: {bgcolor:'#0D1520', bordercolor:'#00E5A0', font:{family:'Inter', color:'#fff', size:13}},",
                 "  xaxis: {title: 'Tiempo (Meses)', gridcolor: 'rgba(255,255,255,0.03)', zerolinecolor: 'rgba(255,255,255,0.1)'},",
-                "  yaxis: {title: 'Producción (bpd)', gridcolor: 'rgba(255,255,255,0.03)', zerolinecolor: 'rgba(255,255,255,0.1)', tickformat: ',', rangemode: 'tozero'},", // Anclaje a Cero
+                "  yaxis: {title: 'Producción (bpd)', gridcolor: 'rgba(255,255,255,0.03)', zerolinecolor: 'rgba(255,255,255,0.1)', tickformat: ',', rangemode: 'tozero'},",
                 "  legend: {orientation: 'h', y: 1.1, font: {size: 12}},",
-                "  annotations: [{x: 16, y: 2600, text: 'ZONA DE RENTABILIDAD', showarrow: false, font: {color: '#00E5A0', size: 10, family: 'Inter'}, opacity: 0.7}]", // Storytelling incrustado
+                "  annotations: [{x: 16, y: 2600, text: 'ZONA DE RENTABILIDAD', showarrow: false, font: {color: '#00E5A0', size: 10, family: 'Inter'}, opacity: 0.7}]",
                 "};",
                 "Plotly.newPlot('plot', [t1, t2], lay, {displayModeBar: false});",
                 "</script>"
             ]
+            
                 components.html("".join(script_parts), height=400)
                 
             with cr:
