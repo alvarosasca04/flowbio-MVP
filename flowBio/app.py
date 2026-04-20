@@ -175,20 +175,27 @@ else:
                 script_parts = [
                 "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>",
                 "<div id='plot' style='height:380px; background:#0D1520; border-radius:12px;'></div>",
+               
+            script_parts = [
+                "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>",
+                "<div id='plot' style='height:380px; background:#0D1520; border-radius:12px;'></div>",
                 "<script>",
                 "var x = Array.from({length:30}, (_,i)=>i);",
                 "var y1 = x.map(i => 4000 * Math.exp(-0.05*i));",
                 "var y2 = x.map(i => i <= 4 ? y1[i] : y1[i] + 1400 * (1 - Math.exp(-0.6*(i-4))) * Math.exp(-0.015*(i-4)));",
-                "var t1 = {x:x, y:y1, name:'Status Quo', line:{color:'#EF4444', dash:'dot', width:2, shape:'spline'}};",
-                "var t2 = {x:x, y:y2, name:'FlowBio EOR', line:{color:'#00E5A0', width:4, shape:'spline'}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.15)'};",
+                "var t1 = {x:x, y:y1, name:'Status Quo', line:{color:'#EF4444', dash:'dot', width:2, shape:'spline'}, hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
+                "var t2 = {x:x, y:y2, name:'FlowBio EOR', line:{color:'#00E5A0', width:4, shape:'spline'}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.15)', hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
                 "var lay = {",
                 "  paper_bgcolor:'transparent', plot_bgcolor:'transparent', font:{color:'#8BA8C0', family:'Inter'},",
                 "  margin:{t:10, b:45, l:60, r:20},",
+                "  hovermode: 'x unified',", // Magia UX: Línea vertical que compara ambas curvas
+                "  hoverlabel: {bgcolor:'#060B11', bordercolor:'#22D3EE', font:{family:'Inter', color:'#fff'}},", // Diseño del recuadro oscuro
                 "  xaxis: {title: 'Tiempo (Meses)', gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)'},",
-                "  yaxis: {title: 'Producción (bpd)', gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)'},",
+                "  yaxis: {title: 'Producción (bpd)', gridcolor: 'rgba(255,255,255,0.05)', zerolinecolor: 'rgba(255,255,255,0.1)', tickformat: ','},", // tickformat agrega las comas a los miles
                 "  legend: {orientation: 'h', y: 1.1, font: {size: 12}}",
                 "};",
-                "Plotly.newPlot('plot', [t1, t2], lay);",
+                // {displayModeBar: false} elimina la molesta barra superior de herramientas
+                "Plotly.newPlot('plot', [t1, t2], lay, {displayModeBar: false});",
                 "</script>"
             ]
                
