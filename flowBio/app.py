@@ -72,7 +72,6 @@ def load_data_from_s3():
     except Exception as e:
         return get_fallback_data()
 
-# 🚀 NUEVA FUNCIÓN A PRUEBA DE FALLOS (TEXTO PLANO)
 def generate_text_report(data):
     tec = data["dashboard_data"]["parametros_tecnicos"]
     fin = data["dashboard_data"]["metricas_financieras"]
@@ -139,9 +138,9 @@ else:
                 ▶ <b>Datos Ingestados:</b> Históricos de producción (10 Pozos)<br>
                 ▶ <b>Producción Base Inicial:</b> 4,000 bpd (Declinación natural activa)<br>
                 ▶ <b>Lifting Cost Actual:</b> $18.50 USD/bbl<br>
-                ▶ <b>Alerta Física:</b> Alta canalización de agua (Fingering) detectada.
+                ▶ <b>Alerta Física:</b> Alta canalización de agua y riesgos de cizallamiento en pozos horizontales.
             </p>
-            <p style='color:#64748B; font-size:12px; margin-top:15px; font-family:Inter;'><i>* Los Agentes PIML están listos para recalibrar la termodinámica del yacimiento y proyectar la recuperación secundaria.</i></p>
+            <p style='color:#64748B; font-size:12px; margin-top:15px; font-family:Inter;'><i>* Los Agentes PIML están listos para recalibrar la termodinámica, prescribir la inyección química y proyectar la rentabilidad.</i></p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -151,18 +150,18 @@ else:
                 with st.status("Orquestando Agentes FlowBio...", expanded=True) as status:
                     st.write("🤖 **Data Agent:** Limpiando histórico CSV y aislando Línea Base...")
                     time.sleep(1.2)
-                    st.write("🤖 **Physics Agent:** Validando salinidad y perfilando polímero (HPAM vs Xantana)...")
+                    st.write("🤖 **Physics Agent:** Validando salinidad e Infraestructura del Pozo (Cizallamiento)...")
                     time.sleep(1.5)
-                    st.write("🤖 **Rheology Agent:** Optimizando Inyección (M=1). Skin Factor Mitigado.")
+                    st.write("🤖 **Rheology Agent:** Calculando receta de inyección (ppm, caudal, presión)...")
                     time.sleep(1.2)
                     st.write("🤖 **Financial Agent:** Calculando Barriles Incrementales y Success Fee...")
                     time.sleep(1.5)
-                    status.update(label="Simulación Exitosa. Generando ROI.", state="complete", expanded=False)
+                    status.update(label="Simulación Exitosa. Generando Prescripción.", state="complete", expanded=False)
                 time.sleep(0.5)
                 st.session_state.simulated = True
                 st.rerun()
     else:
-        tab1, tab2 = st.tabs(["📊 Visión Ejecutiva (CFO)", "⚙️ Análisis por Pozo (Ingeniería)"])
+        tab1, tab2 = st.tabs(["📊 Visión Ejecutiva (CFO)", "⚙️ Prescripción de Ingeniería (Reservorios)"])
         
         with tab1:
             k1, k2, k3, k4 = st.columns(4)
@@ -214,7 +213,6 @@ else:
                     <p style='color:#fff; font-size:24px; font-weight:800; margin-top:0;'>-{ing['wc_reduccion_pct']}%</p>
                 </div>
                 """, unsafe_allow_html=True)
-                # 🚀 EL BOTÓN AHORA DESCARGA UN TXT 100% SEGURO
                 st.download_button("📥 DESCARGAR REPORTE EJECUTIVO", data=generate_text_report(d_root), file_name="FlowBio_Agentic_Report.txt", mime="text/plain")
 
         with tab2:
@@ -222,24 +220,68 @@ else:
             pozos_disponibles = [f"UKCS-Well-{100 + i}" for i in range(1, 11)]
             pozo_seleccionado = st.selectbox("🎯 SELECCIONE UN ACTIVO PARA REVISIÓN PROFUNDA:", pozos_disponibles)
             
+            # MATEMÁTICA Y RANDOMIZACIÓN CON SEMILLA POR POZO
             random.seed(pozo_seleccionado)
+            
+            # Variables Físicas (Infraestructura)
+            infra_types = ["Vertical (Cased Hole)", "Horizontal (Open Hole)", "Vertical (Gravel Pack)", "Multilateral Dirigido"]
+            infra_pozo = random.choice(infra_types)
+            riesgo_cizalla = "ALTO" if "Horizontal" in infra_pozo or "Multilateral" in infra_pozo else "BAJO"
+            polimero_optimo = "Goma Xantana" if riesgo_cizalla == "ALTO" else "HPAM"
+            
+            # Variables de Inyección (La Receta)
+            conc_ppm = int(random.uniform(1200, 2200))
+            vol_pv = round(random.uniform(0.25, 0.45), 2)
+            inj_rate = int(random.uniform(400, 950))
+            pres_max = int(random.uniform(2800, 3600))
+            
             ind_bpd = int((fin["barriles_incrementales_mes"] / 10) * random.uniform(0.85, 1.15))
             ind_m = round(tec["razon_movilidad_alcanzada"] * random.uniform(0.95, 1.05), 2)
-            ind_skin = round(random.uniform(-0.5, 1.2), 2)
             ind_fee = int(ind_bpd * 5)
             
+            # METRICS SUPERIORES
             c1, c2, c3 = st.columns(3)
-            c1.metric(label="Crudo Extra Proyectado", value=f"+{ind_bpd:,} bbls/mes", delta=f"{ind_fee:,} USD (Fee)")
-            c2.metric(label="Movilidad Alcanzada (M)", value=ind_m, delta="Barrido Eficiente" if ind_m < 1.1 else "Alerta Leve", delta_color="normal" if ind_m < 1.1 else "off")
-            c3.metric(label="Skin Factor Proyectado", value=ind_skin, delta="Daño Mitigado" if ind_skin < 1 else "Requiere Monitoreo", delta_color="inverse")
+            c1.metric(label="Infraestructura Detectada", value=infra_pozo, delta=f"Riesgo de Cizallamiento: {riesgo_cizalla}", delta_color="inverse" if riesgo_cizalla == "ALTO" else "normal")
+            c2.metric(label="Crudo Extra Proyectado", value=f"+{ind_bpd:,} bbls/mes", delta=f"{ind_fee:,} USD (Fee)")
+            c3.metric(label="Movilidad Alcanzada (M)", value=ind_m, delta="Barrido Eficiente" if ind_m < 1.1 else "Alerta Leve", delta_color="normal" if ind_m < 1.1 else "off")
             
-            st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
-            
+            # 🚀 LA RECETA DE INYECCIÓN (NUEVA SECCIÓN DEEPTECH)
             st.markdown(f"""
-            <div style='background:#0D1520; padding:20px; border-radius:8px; border-left:4px solid #22D3EE;'>
-                <p style='color:#8BA8C0; font-family:Inter; font-size:12px; margin:0;'>📝 DICTAMEN DE AGENTE (FASE 1 - PIML):</p>
+            <div style='background:rgba(34, 211, 238, 0.05); border:1px solid rgba(34, 211, 238, 0.2); padding:20px; border-radius:12px; margin-top:20px;'>
+                <p style='color:#22D3EE; font-family:Inter; font-size:12px; font-weight:800; margin-bottom:15px; letter-spacing: 1px;'>🧪 RECETA DE INYECCIÓN OPTIMIZADA (FLOWBIO PIML)</p>
+                <div style='display:flex; justify-content:space-between; flex-wrap: wrap; gap: 15px;'>
+                    <div style='min-width: 150px;'>
+                        <span style='color:#8BA8C0; font-size:10px; font-weight:600;'>QUÍMICO RECOMENDADO</span><br>
+                        <span style='color:#fff; font-family:"DM Mono"; font-size:18px;'>{polimero_optimo}</span>
+                    </div>
+                    <div style='min-width: 150px;'>
+                        <span style='color:#8BA8C0; font-size:10px; font-weight:600;'>CONCENTRACIÓN</span><br>
+                        <span style='color:#fff; font-family:"DM Mono"; font-size:18px;'>{conc_ppm} ppm</span>
+                    </div>
+                    <div style='min-width: 150px;'>
+                        <span style='color:#8BA8C0; font-size:10px; font-weight:600;'>VOLUMEN (SLUG PV)</span><br>
+                        <span style='color:#fff; font-family:"DM Mono"; font-size:18px;'>{vol_pv} PV</span>
+                    </div>
+                    <div style='min-width: 150px;'>
+                        <span style='color:#8BA8C0; font-size:10px; font-weight:600;'>CAUDAL DE BOMBEO</span><br>
+                        <span style='color:#fff; font-family:"DM Mono"; font-size:18px;'>{inj_rate} bwpd</span>
+                    </div>
+                    <div style='min-width: 150px;'>
+                        <span style='color:#8BA8C0; font-size:10px; font-weight:600;'>LÍMITE FRACTURA</span><br>
+                        <span style='color:#EF4444; font-family:"DM Mono"; font-size:18px;'>Max {pres_max} psi</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("<hr style='opacity:0.1; margin-top:30px; margin-bottom:20px;'>", unsafe_allow_html=True)
+            
+            # DICTAMEN FINAL
+            st.markdown(f"""
+            <div style='background:#0D1520; padding:20px; border-radius:8px; border-left:4px solid #00E5A0;'>
+                <p style='color:#8BA8C0; font-family:Inter; font-size:12px; margin:0;'>📝 RESOLUCIÓN DE INGENIERÍA:</p>
                 <p style='color:#fff; font-family:DM Mono; font-size:14px; margin-top:5px;'>
-                El activo <b>{pozo_seleccionado}</b> es candidato <b>ÓPTIMO para Fase 1</b>. El Agente analizó la salinidad y perfiló el polímero comercial idóneo (HPAM / Xantana). Se alcanzará una razón M={ind_m}, empujando {ind_bpd} barriles incrementales sin taponar la formación rocosa.
+                El activo <b>{pozo_seleccionado}</b> es candidato <b>ÓPTIMO</b>. El Agente analizó la fricción mecánica de su infraestructura ({infra_pozo}) prescribiendo una inyección de <b>{polimero_optimo} a {conc_ppm} ppm</b>. Respetando el límite de fractura de {pres_max} psi, se proyecta un empuje de {ind_bpd} barriles incrementales mensuales mitigando taponamientos.
                 </p>
             </div>
             """, unsafe_allow_html=True)
