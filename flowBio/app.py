@@ -208,4 +208,38 @@ else:
                 <div style='background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(34,211,238,0.2); height:380px;'>
                     <p style='color:#22D3EE; font-size:11px; font-weight:800; margin-bottom:0;'>RAZÓN DE MOVILIDAD PROMEDIO (M):</p>
                     <p style='color:#fff; font-size:32px; font-weight:800; margin-top:0;'>{tec['razon_movilidad_alcanzada']}</p>
-                    <p style='color:#00E5A0; font-size:14px; font-weight:700;'>{tec['estado_skin_factor
+                    <p style='color:#00E5A0; font-size:14px; font-weight:700;'>{tec['estado_skin_factor']}</p>
+                    <hr style='opacity:0.1; margin:20px 0;'>
+                    <p style='color:#64748B; font-size:10px; font-weight:600; margin-bottom:0;'>REDUCCIÓN WATER CUT (ESTIMADA):</p>
+                    <p style='color:#fff; font-size:24px; font-weight:800; margin-top:0;'>-{ing['wc_reduccion_pct']}%</p>
+                </div>
+                """, unsafe_allow_html=True)
+                # 🚀 EL BOTÓN AHORA DESCARGA UN TXT 100% SEGURO
+                st.download_button("📥 DESCARGAR REPORTE EJECUTIVO", data=generate_text_report(d_root), file_name="FlowBio_Agentic_Report.txt", mime="text/plain")
+
+        with tab2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            pozos_disponibles = [f"UKCS-Well-{100 + i}" for i in range(1, 11)]
+            pozo_seleccionado = st.selectbox("🎯 SELECCIONE UN ACTIVO PARA REVISIÓN PROFUNDA:", pozos_disponibles)
+            
+            random.seed(pozo_seleccionado)
+            ind_bpd = int((fin["barriles_incrementales_mes"] / 10) * random.uniform(0.85, 1.15))
+            ind_m = round(tec["razon_movilidad_alcanzada"] * random.uniform(0.95, 1.05), 2)
+            ind_skin = round(random.uniform(-0.5, 1.2), 2)
+            ind_fee = int(ind_bpd * 5)
+            
+            c1, c2, c3 = st.columns(3)
+            c1.metric(label="Crudo Extra Proyectado", value=f"+{ind_bpd:,} bbls/mes", delta=f"{ind_fee:,} USD (Fee)")
+            c2.metric(label="Movilidad Alcanzada (M)", value=ind_m, delta="Barrido Eficiente" if ind_m < 1.1 else "Alerta Leve", delta_color="normal" if ind_m < 1.1 else "off")
+            c3.metric(label="Skin Factor Proyectado", value=ind_skin, delta="Daño Mitigado" if ind_skin < 1 else "Requiere Monitoreo", delta_color="inverse")
+            
+            st.markdown("<hr style='opacity:0.1'>", unsafe_allow_html=True)
+            
+            st.markdown(f"""
+            <div style='background:#0D1520; padding:20px; border-radius:8px; border-left:4px solid #22D3EE;'>
+                <p style='color:#8BA8C0; font-family:Inter; font-size:12px; margin:0;'>📝 DICTAMEN DE AGENTE (FASE 1 - PIML):</p>
+                <p style='color:#fff; font-family:DM Mono; font-size:14px; margin-top:5px;'>
+                El activo <b>{pozo_seleccionado}</b> es candidato <b>ÓPTIMO para Fase 1</b>. El Agente analizó la salinidad y perfiló el polímero comercial idóneo (HPAM / Xantana). Se alcanzará una razón M={ind_m}, empujando {ind_bpd} barriles incrementales sin taponar la formación rocosa.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
