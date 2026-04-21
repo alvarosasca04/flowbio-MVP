@@ -80,9 +80,11 @@ def generate_corporate_pdf(data):
     pdf.rect(0, 0, 210, 297, 'F')
     pdf.set_text_color(255, 255, 255)
     pdf.set_font('Arial', 'B', 20)
-    pdf.cell(0, 15, 'FlowBio EOR Agentic Report', 0, 1)
+    
+    # Nombramos explícitamente los parámetros para evitar errores de versión en la nube
+    pdf.cell(w=0, h=15, txt='FlowBio EOR Agentic Report', border=0, ln=1)
     pdf.set_font('Arial', '', 12)
-    pdf.cell(0, 10, 'Fecha: ' + datetime.now().strftime("%Y-%m-%d"), 0, 1)
+    pdf.cell(w=0, h=10, txt='Fecha: ' + datetime.now().strftime("%Y-%m-%d"), border=0, ln=1)
     pdf.ln(10)
     
     pdf.set_fill_color(13, 21, 32)
@@ -97,9 +99,14 @@ def generate_corporate_pdf(data):
     ]
     
     for k, v in rows:
-        pdf.cell(95, 12, " " + k, 1, 0, 'L', True)
-        pdf.cell(95, 12, " " + v, 1, 1, 'R')
-    return pdf.output(dest='S').encode('latin-1')
+        pdf.cell(w=95, h=12, txt=" " + k, border=1, ln=0, align='L', fill=True)
+        pdf.cell(w=95, h=12, txt=" " + v, border=1, ln=1, align='R')
+        
+    # Bloque blindado: funciona tanto en la versión vieja como en la nueva de la librería
+    try:
+        return pdf.output(dest='S').encode('latin-1')
+    except Exception:
+        return bytes(pdf.output())
 
 # ══════════════════════════════════════════════════════
 # 3. LÓGICA DE ACCESO Y DASHBOARD
