@@ -4,7 +4,6 @@ import json
 import boto3
 import time
 import random
-from fpdf import FPDF
 from datetime import datetime
 
 # ══════════════════════════════════════════════════════
@@ -73,41 +72,30 @@ def load_data_from_s3():
     except Exception as e:
         return get_fallback_data()
 
-def generate_corporate_pdf(data):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_fill_color(6, 11, 17)
-    pdf.rect(0, 0, 210, 297, 'F')
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font('Arial', 'B', 20)
-    
-    # 100% Posicional (Sin letras 'w=', 'h=', 'txt='). A prueba de versiones viejas.
-    pdf.cell(0, 15, 'FlowBio EOR Agentic Report', 0, 1)
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(0, 10, 'Fecha: ' + datetime.now().strftime("%Y-%m-%d"), 0, 1)
-    pdf.ln(10)
-    
-    pdf.set_fill_color(13, 21, 32)
+# 🚀 NUEVA FUNCIÓN A PRUEBA DE FALLOS (TEXTO PLANO)
+def generate_text_report(data):
     tec = data["dashboard_data"]["parametros_tecnicos"]
     fin = data["dashboard_data"]["metricas_financieras"]
     
-    rows = [
-        ["M-Ratio Alcanzado", str(tec['razon_movilidad_alcanzada'])],
-        ["Estado de Inyectividad", tec['estado_skin_factor']],
-        ["Barriles Extra/Mes", f"+{fin['barriles_incrementales_mes']:,} bbls"],
-        ["Success Fee Proyectado", f"${fin['flowbio_success_fee_usd']:,.2f} USD"]
-    ]
-    
-    for k, v in rows:
-        # cell(w, h, txt, border, ln, align, fill)
-        pdf.cell(95, 12, " " + k, 1, 0, 'L', True)
-        pdf.cell(95, 12, " " + v, 1, 1, 'R')
-        
-    # Bloque blindado de exportación
-    try:
-        return pdf.output(dest='S').encode('latin-1')
-    except Exception:
-        return bytes(pdf.output())
+    reporte = f"""==================================================
+FLOWBIO EOR AGENTIC OS - REPORTE EJECUTIVO
+Fecha de Generación: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+==================================================
+
+[ DIAGNÓSTICO TÉCNICO ]
+- Razón de Movilidad (M): {tec['razon_movilidad_alcanzada']}
+- Estado de Inyectividad: {tec['estado_skin_factor']}
+
+[ IMPACTO FINANCIERO MENSUAL ]
+- Barriles Extra Proyectados: +{fin['barriles_incrementales_mes']:,} bbls
+- Ingreso Bruto para Cliente: ${fin['ingreso_bruto_operadora_usd']:,.2f} USD
+- FlowBio Success Fee:        ${fin['flowbio_success_fee_usd']:,.2f} USD
+
+==================================================
+* Documento generado autómaticamente por Agentes PIML.
+"""
+    return reporte.encode('utf-8')
+
 # ══════════════════════════════════════════════════════
 # 3. LÓGICA DE ACCESO Y DASHBOARD
 # ══════════════════════════════════════════════════════
@@ -185,4 +173,26 @@ else:
             with k3: 
                 st.markdown(f'<div class="kpi-box" style="border-top:4px solid #22D3EE"><p class="kpi-label">🤝 SUCCESS FEE (FLOWBIO)</p><p class="kpi-value">${fin["flowbio_success_fee_usd"]:,.0f}</p><p class="kpi-desc">Nuestra tarifa por éxito verificado.</p></div>', unsafe_allow_html=True)
             with k4: 
-                st.markdown(f'<div class="kpi-box"><p class="kpi-label">⏱️ PAYBACK PROJECT</p><p class="kpi-value">{ing["payback_meses"]} Meses</p><p class="kpi-desc">Retorno de inversión tecnológica promedio.</
+                st.markdown(f'<div class="kpi-box"><p class="kpi-label">⏱️ PAYBACK PROJECT</p><p class="kpi-value">{ing["payback_meses"]} Meses</p><p class="kpi-desc">Retorno de inversión tecnológica promedio.</p></div>', unsafe_allow_html=True)
+
+            cl, cr = st.columns([2.3, 1.7])
+            with cl:
+                st.markdown("<p style='color:#8BA8C0; font-family:Inter; font-size:14px; margin-top:20px; margin-bottom:5px;'>Curva de Declinación Consolidada (DCA)</p>", unsafe_allow_html=True)
+                script_parts = [
+                    "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>",
+                    "<div id='plot' style='height:380px; background:#0D1520; border-radius:12px;'></div>",
+                    "<script>",
+                    "var x = Array.from({length:30}, (_,i)=>i);",
+                    "var y1 = x.map(i => 4000 * Math.exp(-0.05*i));",
+                    "var y2 = x.map(i => i <= 4 ? y1[i] : y1[i] + 1400 * (1 - Math.exp(-0.6*(i-4))) * Math.exp(-0.015*(i-4)));",
+                    "var t1 = {x:x, y:y1, name:'Status Quo', line:{color:'#EF4444', dash:'dot', width:2, shape:'spline'}, hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
+                    "var t2 = {x:x, y:y2, name:'FlowBio EOR', line:{color:'#00E5A0', width:4, shape:'spline'}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.15)', hovertemplate:'<b>%{y:,.0f}</b> bpd<extra></extra>'};",
+                    "var lay = {",
+                    "  paper_bgcolor:'transparent', plot_bgcolor:'transparent', font:{color:'#8BA8C0', family:'Inter'},",
+                    "  margin:{t:10, b:45, l:60, r:20},",
+                    "  hovermode: 'x unified',",
+                    "  hoverlabel: {bgcolor:'#0D1520', bordercolor:'#00E5A0', font:{family:'Inter', color:'#fff', size:13}},",
+                    "  xaxis: {title: 'Tiempo (Meses)', gridcolor: 'rgba(255,255,255,0.03)', zerolinecolor: 'rgba(255,255,255,0.1)'},",
+                    "  yaxis: {title: 'Producción (bpd)', gridcolor: 'rgba(255,255,255,0.03)', zerolinecolor: 'rgba(255,255,255,0.1)', tickformat: ',', rangemode: 'tozero'},",
+                    "  legend: {orientation: 'h', y: 1.1, font: {size: 12}},",
+                    "  annotations: [{x: 16, y: 2600, text: 'ZONA DE RENTABILIDAD', showarrow: false, font: {color: '#00E5A0
