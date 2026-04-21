@@ -138,7 +138,7 @@ else:
                 ▶ <b>Datos Ingestados:</b> Históricos de producción (10 Pozos)<br>
                 ▶ <b>Producción Base Inicial:</b> 4,000 bpd (Declinación natural activa)<br>
                 ▶ <b>Lifting Cost Actual:</b> $18.50 USD/bbl<br>
-                ▶ <b>Alerta Física:</b> Alta canalización de agua y riesgos de cizallamiento en pozos horizontales.
+                ▶ <b>Alerta Física:</b> Alta canalización de agua y riesgos de cizallamiento mecánicos.
             </p>
             <p style='color:#64748B; font-size:12px; margin-top:15px; font-family:Inter;'><i>* Los Agentes PIML están listos para recalibrar la termodinámica, prescribir la inyección química y proyectar la rentabilidad.</i></p>
         </div>
@@ -220,7 +220,7 @@ else:
             pozos_disponibles = [f"UKCS-Well-{100 + i}" for i in range(1, 11)]
             pozo_seleccionado = st.selectbox("🎯 SELECCIONE UN ACTIVO PARA REVISIÓN PROFUNDA:", pozos_disponibles)
             
-            # MATEMÁTICA Y RANDOMIZACIÓN CON SEMILLA POR POZO
+            # MATEMÁTICA Y RANDOMIZACIÓN CON SEMILLA POR POZO (Mago de Oz para el Frontend)
             random.seed(pozo_seleccionado)
             
             # Variables Físicas (Infraestructura)
@@ -239,34 +239,33 @@ else:
             ind_m = round(tec["razon_movilidad_alcanzada"] * random.uniform(0.95, 1.05), 2)
             ind_fee = int(ind_bpd * 5)
             
-            # METRICS SUPERIORES
             c1, c2, c3 = st.columns(3)
             c1.metric(label="Infraestructura Detectada", value=infra_pozo, delta=f"Riesgo de Cizallamiento: {riesgo_cizalla}", delta_color="inverse" if riesgo_cizalla == "ALTO" else "normal")
             c2.metric(label="Crudo Extra Proyectado", value=f"+{ind_bpd:,} bbls/mes", delta=f"{ind_fee:,} USD (Fee)")
             c3.metric(label="Movilidad Alcanzada (M)", value=ind_m, delta="Barrido Eficiente" if ind_m < 1.1 else "Alerta Leve", delta_color="normal" if ind_m < 1.1 else "off")
             
-            # 🚀 LA RECETA DE INYECCIÓN (NUEVA SECCIÓN DEEPTECH)
+            # 🚀 AQUÍ ESTÁ LA CAJA DE TERMINAL DE INGENIERÍA CYAN
             st.markdown(f"""
             <div style='background:rgba(34, 211, 238, 0.05); border:1px solid rgba(34, 211, 238, 0.2); padding:20px; border-radius:12px; margin-top:20px;'>
                 <p style='color:#22D3EE; font-family:Inter; font-size:12px; font-weight:800; margin-bottom:15px; letter-spacing: 1px;'>🧪 RECETA DE INYECCIÓN OPTIMIZADA (FLOWBIO PIML)</p>
                 <div style='display:flex; justify-content:space-between; flex-wrap: wrap; gap: 15px;'>
-                    <div style='min-width: 150px;'>
+                    <div style='min-width: 140px;'>
                         <span style='color:#8BA8C0; font-size:10px; font-weight:600;'>QUÍMICO RECOMENDADO</span><br>
                         <span style='color:#fff; font-family:"DM Mono"; font-size:18px;'>{polimero_optimo}</span>
                     </div>
-                    <div style='min-width: 150px;'>
+                    <div style='min-width: 140px;'>
                         <span style='color:#8BA8C0; font-size:10px; font-weight:600;'>CONCENTRACIÓN</span><br>
                         <span style='color:#fff; font-family:"DM Mono"; font-size:18px;'>{conc_ppm} ppm</span>
                     </div>
-                    <div style='min-width: 150px;'>
+                    <div style='min-width: 140px;'>
                         <span style='color:#8BA8C0; font-size:10px; font-weight:600;'>VOLUMEN (SLUG PV)</span><br>
                         <span style='color:#fff; font-family:"DM Mono"; font-size:18px;'>{vol_pv} PV</span>
                     </div>
-                    <div style='min-width: 150px;'>
-                        <span style='color:#8BA8C0; font-size:10px; font-weight:600;'>CAUDAL DE BOMBEO</span><br>
+                    <div style='min-width: 140px;'>
+                        <span style='color:#8BA8C0; font-size:10px; font-weight:600;'>CAUDAL BOMBEO</span><br>
                         <span style='color:#fff; font-family:"DM Mono"; font-size:18px;'>{inj_rate} bwpd</span>
                     </div>
-                    <div style='min-width: 150px;'>
+                    <div style='min-width: 140px;'>
                         <span style='color:#8BA8C0; font-size:10px; font-weight:600;'>LÍMITE FRACTURA</span><br>
                         <span style='color:#EF4444; font-family:"DM Mono"; font-size:18px;'>Max {pres_max} psi</span>
                     </div>
@@ -276,12 +275,11 @@ else:
             
             st.markdown("<hr style='opacity:0.1; margin-top:30px; margin-bottom:20px;'>", unsafe_allow_html=True)
             
-            # DICTAMEN FINAL
             st.markdown(f"""
             <div style='background:#0D1520; padding:20px; border-radius:8px; border-left:4px solid #00E5A0;'>
                 <p style='color:#8BA8C0; font-family:Inter; font-size:12px; margin:0;'>📝 RESOLUCIÓN DE INGENIERÍA:</p>
                 <p style='color:#fff; font-family:DM Mono; font-size:14px; margin-top:5px;'>
-                El activo <b>{pozo_seleccionado}</b> es candidato <b>ÓPTIMO</b>. El Agente analizó la fricción mecánica de su infraestructura ({infra_pozo}) prescribiendo una inyección de <b>{polimero_optimo} a {conc_ppm} ppm</b>. Respetando el límite de fractura de {pres_max} psi, se proyecta un empuje de {ind_bpd} barriles incrementales mensuales mitigando taponamientos.
+                El activo <b>{pozo_seleccionado}</b> es candidato <b>ÓPTIMO para Fase 1</b>. El Agente analizó la fricción mecánica de su infraestructura ({infra_pozo}) prescribiendo una inyección de <b>{polimero_optimo} a {conc_ppm} ppm</b>. Respetando el límite de fractura de {pres_max} psi, se proyecta un empuje de {ind_bpd} barriles incrementales mensuales mitigando taponamientos.
                 </p>
             </div>
             """, unsafe_allow_html=True)
