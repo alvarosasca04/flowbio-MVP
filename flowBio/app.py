@@ -195,4 +195,17 @@ else:
                     "  xaxis: {title: 'Tiempo (Meses)', gridcolor: 'rgba(255,255,255,0.03)', zerolinecolor: 'rgba(255,255,255,0.1)'},",
                     "  yaxis: {title: 'Producción (bpd)', gridcolor: 'rgba(255,255,255,0.03)', zerolinecolor: 'rgba(255,255,255,0.1)', tickformat: ',', rangemode: 'tozero'},",
                     "  legend: {orientation: 'h', y: 1.1, font: {size: 12}},",
-                    "  annotations: [{x: 16, y: 2600, text: 'ZONA DE RENTABILIDAD', showarrow: false, font: {color: '#00E5A0
+                    "  annotations: [{x: 16, y: 2600, text: 'ZONA DE RENTABILIDAD', showarrow: false, font: {color: '#00E5A0', size: 10, family: 'Inter'}, opacity: 0.7}]",
+                    "};",
+                    "Plotly.newPlot('plot', [t1, t2], lay, {displayModeBar: false});",
+                    "</script>"
+                ]
+                components.html("".join(script_parts), height=400)
+                
+            with cr:
+                st.markdown("<p style='color:#8BA8C0; font-family:Inter; font-size:14px; margin-top:20px; margin-bottom:5px;'>Reporte Global de Mitigación</p>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style='background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(34,211,238,0.2); height:380px;'>
+                    <p style='color:#22D3EE; font-size:11px; font-weight:800; margin-bottom:0;'>RAZÓN DE MOVILIDAD PROMEDIO (M):</p>
+                    <p style='color:#fff; font-size:32px; font-weight:800; margin-top:0;'>{tec['razon_movilidad_alcanzada']}</p>
+                    <p style='color:#00E5A0; font-size:14px; font-weight:700;'>{tec['estado_skin_factor
