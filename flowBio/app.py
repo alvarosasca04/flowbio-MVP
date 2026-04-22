@@ -1,4 +1,5 @@
 import streamlit as st
+import st.components.v1.html
 import json
 import boto3
 from fpdf import FPDF
