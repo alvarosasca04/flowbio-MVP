@@ -17,11 +17,17 @@ st.markdown("""
     [data-testid="stHeader"], [data-testid="stSidebar"], footer { display: none !important; }
     .stApp { background: #060B11; }
     .block-container { padding: 2rem 3rem !important; }
+    
+    /* Fuentes de respaldo para evitar que cambie la tipografía */
+    body, p, div { font-family: 'Inter', -apple-system, sans-serif !important; }
+    .kpi-value, h1, h2 { font-family: 'Syne', sans-serif !important; }
+    .kpi-label, code, pre { font-family: 'DM Mono', monospace !important; }
+    
     .kpi-box { background: rgba(13, 21, 32, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 22px; border-top: 4px solid #00E5A0; height: 100%; }
-    .kpi-label { font-family: 'Inter'; font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; margin-bottom: 0px; }
-    .kpi-value { font-family: 'Syne'; font-size: 32px; font-weight: 800; color: #fff; margin: 5px 0; }
-    .kpi-desc { font-family: 'Inter'; font-size: 10px; color: #8BA8C0; margin-top: 5px; line-height: 1.2; }
-    .stButton > button { background: #00E5A0 !important; color: #060B11 !important; font-family: 'Syne' !important; font-weight: 800 !important; border-radius: 8px !important; padding: 15px 30px !important; width: 100%; }
+    .kpi-label { font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; margin-bottom: 0px; }
+    .kpi-value { font-size: 32px; font-weight: 800; color: #fff; margin: 5px 0; }
+    .kpi-desc { font-size: 10px; color: #8BA8C0; margin-top: 5px; line-height: 1.2; }
+    .stButton > button { background: #00E5A0 !important; color: #060B11 !important; font-family: 'Syne', sans-serif !important; font-weight: 800 !important; border-radius: 8px !important; padding: 15px 30px !important; width: 100%; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -30,12 +36,25 @@ st.markdown("""
 # ══════════════════════════════════════════════════════
 def load_data_from_s3():
     try:
-        s3 = boto3.client('s3', aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"], aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"], region_name="us-east-2")
+        # Intenta ambas formas de acceder a st.secrets para mayor compatibilidad
+        try:
+            aws_key = st.secrets["aws"]["AWS_ACCESS_KEY_ID"]
+            aws_sec = st.secrets["aws"]["AWS_SECRET_ACCESS_KEY"]
+        except:
+            aws_key = st.secrets["AWS_ACCESS_KEY_ID"]
+            aws_sec = st.secrets["AWS_SECRET_ACCESS_KEY"]
+            
+        s3 = boto3.client('s3', aws_access_key_id=aws_key, aws_secret_access_key=aws_sec, region_name="us-east-2")
         response = s3.get_object(Bucket="flowbio-data-lake-v2-627807503177-us-east-2-an", Key="agentes/dashboard_data.json")
         return json.loads(response['Body'].read().decode('utf-8'))
     except Exception as e:
-        st.error("Error al cargar datos. Verifica credenciales o conexión a S3.")
+        st.error(f"Error al cargar datos. Verifica credenciales o conexión a S3. ({e})")
         return None
+
+def clean_text(text):
+    """Limpia caracteres especiales antes de meterlos al PDF para evitar errores"""
+    if text is None: return ""
+    return str(text).replace('·', '.').replace('²', '2').encode('latin-1', errors='replace').decode('latin-1')
 
 def generate_corporate_pdf(well, d):
     pdf = FPDF()
@@ -44,16 +63,26 @@ def generate_corporate_pdf(well, d):
     pdf.rect(0, 0, 210, 297, 'F')
     pdf.set_text_color(255, 255, 255)
     pdf.set_font('Arial', 'B', 20)
-    pdf.cell(0, 15, 'FlowBio Executive Report: ' + str(well), 0, 1)
+    pdf.cell(0, 15, clean_text('FlowBio Executive Report: ' + str(well)), 0, 1)
     pdf.set_font('Arial', '', 12)
-    pdf.cell(0, 10, 'Fecha: ' + datetime.now().strftime("%Y-%m-%d"), 0, 1)
+    pdf.cell(0, 10, clean_text('Fecha: ' + datetime.now().strftime("%Y-%m-%d")), 0, 1)
     pdf.ln(10)
     pdf.set_fill_color(13, 21, 32)
+    
     eur_str = f"{d.get('eur', 0):,}"
-    for k, v in [["PV", str(d.get('visc_p', 98.4)) + " cP"], ["YP", str(d.get('yield_p', 28.9)) + " lb/ft2"], ["EUR", eur_str + " bbls"], ["PAYBACK", str(d.get('payback', 0)) + " Meses"]]:
-        pdf.cell(95, 12, " " + k, 1, 0, 'L', True)
-        pdf.cell(95, 12, " " + v, 1, 1, 'R')
-    return pdf.output(dest='S').encode('latin-1')
+    items = [
+        ["PV", str(d.get('visc_p', 98.4)) + " cP"], 
+        ["YP", str(d.get('yield_p', 28.9)) + " lb/ft2"], 
+        ["EUR", eur_str + " bbls"], 
+        ["PAYBACK", str(d.get('payback', 0)) + " Meses"]
+    ]
+    
+    for k, v in items:
+        pdf.cell(95, 12, clean_text(" " + k), 1, 0, 'L', True)
+        pdf.cell(95, 12, clean_text(" " + v), 1, 1, 'R')
+        
+    # FIX: errors='replace' previene que la app explote con caracteres raros
+    return pdf.output(dest='S').encode('latin-1', errors='replace')
 
 # ══════════════════════════════════════════════════════
 # 3. INTERFAZ DE NAVEGACIÓN Y DASHBOARD
@@ -91,7 +120,7 @@ else:
     if "dashboard_data" in datos_pozos:
         datos_pozos = datos_pozos["dashboard_data"]
 
-    # Filtro para ignorar basura en caché (solo toma llaves que sean pozos reales)
+    # Filtro para ignorar basura en caché
     lista_pozos = [k for k in datos_pozos.keys() if "Well" in k or "Pozo" in k]
 
     if not lista_pozos:
@@ -102,7 +131,7 @@ else:
     pozo_seleccionado = st.selectbox("📍 Seleccione un pozo para Análisis de Declinación:", lista_pozos)
     d = datos_pozos[pozo_seleccionado]
 
-    # Cálculos financieros del pozo seleccionado
+    # Cálculos financieros del pozo seleccionado (Tus cálculos exactos)
     eur_val = d.get('eur', 0)
     barriles_extra_mes = int(eur_val / 60) # EUR dividido en 60 meses
     valor_extra = barriles_extra_mes * 74.5 
@@ -130,7 +159,7 @@ else:
     cl, cr = st.columns([2.3, 1.7])
     
     with cl:
-        # Gráfica Plotly alimentada por la IA
+        # Gráfica Plotly original
         script_grafica = f"""
         <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
         <div id='plot' style='height:400px; background:#0D1520; border-radius:12px; border:1px solid rgba(255,255,255,0.05);'></div>
