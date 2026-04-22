@@ -1,168 +1,341 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import json
+import json, math
 import boto3
-import math
 from fpdf import FPDF
 from datetime import datetime
 
 # ══════════════════════════════════════════════════════
-# 1. CONFIGURACIÓN Y ESTILOS
+# 1. CONFIGURACIÓN
 # ══════════════════════════════════════════════════════
-st.set_page_config(page_title="FlowBio Subsurface OS", page_icon="🧬", layout="wide")
+st.set_page_config(
+    page_title="FlowBio Subsurface OS",
+    page_icon="🧬",
+    layout="wide"
+)
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Syne:wght@700;800&family=DM+Mono&display=swap');
-    [data-testid="stHeader"], [data-testid="stSidebar"], footer { display: none !important; }
-    .stApp { background: #060B11; }
-    .block-container { padding: 2rem 3rem !important; }
-    .kpi-box { background: rgba(13, 21, 32, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 22px; border-top: 4px solid #00E5A0; height: 100%; }
-    .kpi-label { font-family: 'Inter'; font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; margin-bottom: 0px; }
-    .kpi-value { font-family: 'Syne'; font-size: 32px; font-weight: 800; color: #fff; margin: 5px 0; }
-    .kpi-desc { font-family: 'Inter'; font-size: 10px; color: #8BA8C0; margin-top: 5px; line-height: 1.2; }
-    .stButton > button { background: #00E5A0 !important; color: #060B11 !important; font-family: 'Syne' !important; font-weight: 800 !important; border-radius: 8px !important; padding: 15px 30px !important; width: 100%; }
+    [data-testid="stHeader"],[data-testid="stSidebar"],footer{display:none!important}
+    .stApp{background:#060B11}
+    .block-container{padding:2rem 3rem!important}
+    .kpi-box{background:rgba(13,21,32,0.8);border:1px solid rgba(255,255,255,0.05);
+             border-radius:12px;padding:22px;border-top:4px solid #00E5A0;height:100%}
+    .kpi-box.cyan{border-top-color:#22D3EE}
+    .kpi-box.amber{border-top-color:#F59E0B}
+    .kpi-box.red{border-top-color:#EF4444}
+    .kpi-label{font-family:'DM Mono';font-size:11px;color:#64748B;font-weight:600;
+               text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+    .kpi-value{font-family:'Syne';font-size:32px;font-weight:800;color:#fff;margin:5px 0}
+    .kpi-desc{font-family:'Inter';font-size:10px;color:#8BA8C0;margin-top:5px;line-height:1.3}
+    .stButton>button{background:#00E5A0!important;color:#060B11!important;
+                     font-family:'Syne'!important;font-weight:800!important;
+                     border-radius:8px!important;padding:15px 30px!important;width:100%}
 </style>
 """, unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════
-# 2. FUNCIONES DE CORE (S3 Y PDF)
-# ══════════════════════════════════════════════════════
-def load_data_from_s3():
-    try:
-        s3 = boto3.client('s3', aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"], aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"], region_name="us-east-2")
-        response = s3.get_object(Bucket="flowbio-data-lake-v2-627807503177-us-east-2-an", Key="agentes/dashboard_data.json")
-        return json.loads(response['Body'].read().decode('utf-8'))
-    except Exception as e:
-        st.error("Error al cargar datos. Verifica credenciales o conexión a S3.")
-        return None
 
-def generate_corporate_pdf(well, d):
+# ══════════════════════════════════════════════════════
+# 2. S3 — carga dashboard_data.json generado por Jupyter
+# ══════════════════════════════════════════════════════
+@st.cache_data(ttl=60)
+def load_dashboard_data():
+    """Lee dashboard_data.json del bucket S3. TTL=60s."""
+    try:
+        # BUG6 FIX: acepta ambas notaciones de st.secrets
+        try:
+            aws_key = st.secrets["aws"]["AWS_ACCESS_KEY_ID"]
+            aws_sec = st.secrets["aws"]["AWS_SECRET_ACCESS_KEY"]
+        except:
+            aws_key = st.secrets["AWS_ACCESS_KEY_ID"]
+            aws_sec = st.secrets["AWS_SECRET_ACCESS_KEY"]
+
+        s3  = boto3.client("s3",
+            aws_access_key_id=aws_key,
+            aws_secret_access_key=aws_sec,
+            region_name="us-east-2")
+        obj = s3.get_object(
+            Bucket="flowbio-data-lake-v2-627807503177-us-east-2-an",
+            Key="agentes/dashboard_data.json")
+        return json.loads(obj["Body"].read().decode("utf-8")), True
+    except Exception as e:
+        st.warning(f"S3: {e} — usando datos demo")
+        return None, False
+
+def demo_data():
+    """Datos demo con los campos correctos para cuando S3 no está disponible."""
+    return {
+        "Well-UKCS-Alpha": {
+            "ahorro":12000,"mejora":18.5,"extra_bpd":92.5,"extra_mes":2775,
+            "valor_extra":206831,"fee":13875,"eur":135150,"payback":4.2,
+            "oil_price_usd":74.5,"visc_p":102.3,"yield_p":18.4,
+            "quimico":"Na-CMC FlowBio","ppm":1760,"vol_pv":0.31,"bwpd":478,
+            "lim_psi":3240,"wc_red":19.2,"skin":8.4,"temp_c":78.0,
+            "recomendacion":"INYECTAR",
+        },
+        "Well-UKCS-Beta": {
+            "ahorro":9500,"mejora":14.2,"extra_bpd":71.0,"extra_mes":2130,
+            "valor_extra":158685,"fee":10650,"eur":103880,"payback":5.8,
+            "oil_price_usd":74.5,"visc_p":88.7,"yield_p":14.1,
+            "quimico":"Goma Xantana","ppm":1320,"vol_pv":0.24,"bwpd":421,
+            "lim_psi":2980,"wc_red":15.7,"skin":5.1,"temp_c":62.0,
+            "recomendacion":"INYECTAR",
+        },
+        "Well-UKCS-Gamma": {
+            "ahorro":4200,"mejora":6.8,"extra_bpd":34.0,"extra_mes":1020,
+            "valor_extra":75990,"fee":5100,"eur":49640,"payback":9.1,
+            "oil_price_usd":74.5,"visc_p":65.4,"yield_p":9.8,
+            "quimico":"Na-CMC FlowBio","ppm":1540,"vol_pv":0.19,"bwpd":391,
+            "lim_psi":2750,"wc_red":12.3,"skin":3.2,"temp_c":91.0,
+            "recomendacion":"MONITOREAR",
+        },
+    }
+
+
+# ══════════════════════════════════════════════════════
+# 3. PDF CORPORATIVO
+# ══════════════════════════════════════════════════════
+def generate_pdf(well, d):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_fill_color(6, 11, 17)
-    pdf.rect(0, 0, 210, 297, 'F')
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font('Arial', 'B', 20)
-    pdf.cell(0, 15, 'FlowBio Executive Report: ' + str(well), 0, 1)
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(0, 10, 'Fecha: ' + datetime.now().strftime("%Y-%m-%d"), 0, 1)
-    pdf.ln(10)
-    pdf.set_fill_color(13, 21, 32)
-    eur_str = f"{d.get('eur', 0):,}"
-    for k, v in [["PV", str(d.get('visc_p', 98.4)) + " cP"], ["YP", str(d.get('yield_p', 28.9)) + " lb/ft2"], ["EUR", eur_str + " bbls"], ["PAYBACK", str(d.get('payback', 0)) + " Meses"]]:
-        pdf.cell(95, 12, " " + k, 1, 0, 'L', True)
-        pdf.cell(95, 12, " " + v, 1, 1, 'R')
+    pdf.set_fill_color(6,11,17); pdf.rect(0,0,210,297,'F')
+    pdf.set_text_color(255,255,255)
+    pdf.set_font('Arial','B',18)
+    pdf.cell(0,15,f"FlowBio Executive Report: {well}",0,1)
+    pdf.set_font('Arial','',11)
+    pdf.set_text_color(0,229,160)
+    pdf.cell(0,8,f"Generado: {datetime.now().strftime('%Y-%m-%d %H:%M')} | PIML v0.3",0,1)
+    pdf.ln(6)
+    pdf.set_fill_color(13,21,32); pdf.set_text_color(255,255,255)
+    # KPIs financieros con datos REALES
+    rows_pdf = [
+        ["Barriles Extra/Día",  f"{d.get('extra_bpd',0):.1f} bbl/día"],
+        ["Barriles Extra/Mes",  f"{d.get('extra_mes',0):,} bbl/mes"],
+        ["Valor Extra Generado",f"${d.get('valor_extra',0):,} USD/mes"],
+        ["Success Fee Mensual", f"${d.get('fee',0):,} USD/mes"],
+        ["Payback",             f"{d.get('payback',0)} meses"],
+        ["PV (Visc. Plástica)", f"{d.get('visc_p',0)} mPa·s"],
+        ["YP (Yield Point)",    f"{d.get('yield_p',0)} lb/ft²"],
+        ["EUR Acumulado",       f"{d.get('eur',0):,} bbls"],
+        ["Químico EOR",         str(d.get('quimico','—'))],
+        ["Concentración",       f"{d.get('ppm',0)} ppm"],
+        ["Factor Skin",         f"{d.get('skin',0):.2f}"],
+        ["Recomendación",       str(d.get('recomendacion','—'))],
+    ]
+    for k,v in rows_pdf:
+        pdf.cell(95,11,f" {k}",1,0,'L',True)
+        pdf.cell(95,11,f" {v}",1,1,'R')
+    pdf.ln(8)
+    pdf.set_text_color(100,116,139)
+    pdf.set_font('Arial','I',9)
+    pdf.cell(0,8,"FlowBio Intelligence · PIML v0.3 · TRL 4 · Orizaba, Veracruz, MX",0,1,'C')
     return pdf.output(dest='S').encode('latin-1')
 
+
 # ══════════════════════════════════════════════════════
-# 3. INTERFAZ DE NAVEGACIÓN Y DASHBOARD
+# 4. AUTENTICACIÓN
 # ══════════════════════════════════════════════════════
-if 'auth' not in st.session_state:
-    st.session_state.auth = False
+if 'auth' not in st.session_state: st.session_state.auth = False
 
 if not st.session_state.auth:
-    # PANTALLA DE ACCESO
-    st.markdown("<div style='text-align:center; margin-top:20vh;'><h1 style='color:white; font-family:Syne; font-size:80px;'>FlowBio<span style='color:#00E5A0'>.</span></h1></div>", unsafe_allow_html=True)
-    _, c, _ = st.columns([1, 0.8, 1])
+    st.markdown("""
+    <div style='text-align:center;margin-top:18vh'>
+      <h1 style='color:white;font-family:Syne;font-size:72px;letter-spacing:-3px'>
+        FlowBio<span style='color:#00E5A0'>.</span>
+      </h1>
+      <p style='color:#4A6580;font-family:DM Mono;font-size:12px;letter-spacing:3px'>
+        SUBSURFACE OS · GROQ EDITION
+      </p>
+    </div>""", unsafe_allow_html=True)
+    _, c, _ = st.columns([1,0.7,1])
     with c:
         pwd = st.text_input("PASSWORD:", type="password")
-        if st.button("SINCRONIZAR"):
+        if st.button("SINCRONIZAR CON S3"):
             if pwd == "FlowBio2026":
-                st.session_state.all_data = load_data_from_s3()
-                if st.session_state.all_data:
-                    st.session_state.auth = True
-                    st.rerun()
-else:
-    # DASHBOARD PRINCIPAL
-    c_title, c_logout = st.columns([4, 1])
-    with c_title:
-        st.markdown("## Command Center")
-    with c_logout:
-        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-        if st.button("🏠 CERRAR SESIÓN"):
-            st.session_state.auth = False  
-            st.rerun()                     
+                raw, ok = load_dashboard_data()
+                # Compatibilidad: acepta con o sin wrapper "dashboard_data"
+                if raw and "dashboard_data" in raw:
+                    raw = raw["dashboard_data"]
+                st.session_state.all_data = raw or demo_data()
+                st.session_state.s3_ok    = ok
+                st.session_state.auth     = True
+                st.rerun()
+            else:
+                st.error("Contraseña incorrecta")
+    st.stop()
 
-    # --- LÓGICA DINÁMICA ---
-    datos_pozos = st.session_state.all_data
 
-    # Parche de seguridad para desenvolver JSON si es necesario
-    if "dashboard_data" in datos_pozos:
-        datos_pozos = datos_pozos["dashboard_data"]
+# ══════════════════════════════════════════════════════
+# 5. DASHBOARD PRINCIPAL
+# ══════════════════════════════════════════════════════
+datos_pozos = st.session_state.all_data
 
-    # Filtro para ignorar basura en caché (solo toma llaves que sean pozos reales)
-    lista_pozos = [k for k in datos_pozos.keys() if "Well" in k or "Pozo" in k]
+# Header
+c_title, c_refresh, c_logout = st.columns([5, 1, 1])
+with c_title:
+    s3_status = "🟢 S3 Live" if st.session_state.get("s3_ok") else "🔵 Demo"
+    st.markdown(f"## Command Center <span style='color:#00E5A0'>FlowBio</span> "
+                f"<span style='font-size:12px;color:#4A6580;font-family:monospace'>{s3_status}</span>",
+                unsafe_allow_html=True)
+with c_refresh:
+    if st.button("🔄 Refresh"):
+        st.cache_data.clear()
+        raw, ok = load_dashboard_data()
+        if raw and "dashboard_data" in raw: raw = raw["dashboard_data"]
+        st.session_state.all_data = raw or demo_data()
+        st.session_state.s3_ok   = ok
+        st.rerun()
+with c_logout:
+    if st.button("🏠 Salir"):
+        st.session_state.auth = False; st.rerun()
 
-    if not lista_pozos:
-        st.error("⚠️ Caché obsoleto. Por favor haz click en los 3 puntitos arriba a la derecha y selecciona 'Clear Cache'.")
-        st.stop()
+# Filtro de pozos (acepta Well-* y Pozo-*)
+lista_pozos = [k for k in datos_pozos.keys()
+               if any(x in k for x in ["Well","Pozo","well","pozo","UKCS","P-"])]
+if not lista_pozos:
+    lista_pozos = list(datos_pozos.keys())  # si no hay filtro, muestra todos
 
-    # Menú desplegable de pozo
-    pozo_seleccionado = st.selectbox("📍 Seleccione un pozo para Análisis de Declinación:", lista_pozos)
-    d = datos_pozos[pozo_seleccionado]
+if not lista_pozos:
+    st.error("⚠️ Sin pozos. Ejecuta el pipeline Jupyter primero.")
+    st.stop()
 
-    # Cálculos financieros del pozo seleccionado
-    eur_val = d.get('eur', 0)
-    barriles_extra_mes = int(eur_val / 60) # EUR dividido en 60 meses
-    valor_extra = barriles_extra_mes * 74.5 
-    success_fee = d.get('fee', 0)
-    payback_val = d.get('payback', 0)
-    mejora_val = d.get('mejora', 0)
+pozo_sel = st.selectbox("📍 Selecciona un pozo:", lista_pozos)
+d = datos_pozos[pozo_sel]
 
-    # KPIs DINÁMICOS
+# ── KPIs — todos con datos REALES del JSON ─────────────
+# BUG2/3/4 FIX: usar campos exportados por Jupyter
+extra_bpd    = d.get("extra_bpd",    d.get("eur",0)/60/30)  # fallback si es JSON viejo
+extra_mes    = d.get("extra_mes",    int(extra_bpd*30))
+valor_extra  = d.get("valor_extra",  int(extra_mes * d.get("oil_price_usd",74.5)))
+fee_mensual  = d.get("fee",          int(extra_bpd * 5.0 * 30))
+payback_val  = d.get("payback",      0)
+mejora_val   = d.get("mejora",       0)
+
+st.markdown("<br>", unsafe_allow_html=True)
+k1,k2,k3,k4 = st.columns(4)
+with k1:
+    st.markdown(f"""<div class="kpi-box">
+      <p class="kpi-label">CRUDO INCREMENTAL / MES</p>
+      <p class="kpi-value">+{extra_mes:,} <span style="font-size:16px">bbls</span></p>
+      <p class="kpi-desc">{extra_bpd:.1f} bbl/día · dato real PIML</p>
+    </div>""", unsafe_allow_html=True)
+with k2:
+    st.markdown(f"""<div class="kpi-box cyan">
+      <p class="kpi-label">VALOR EXTRA GENERADO</p>
+      <p class="kpi-value" style="color:#22D3EE">${valor_extra:,}</p>
+      <p class="kpi-desc">extra_mes × ${d.get('oil_price_usd',74.5)}/bbl</p>
+    </div>""", unsafe_allow_html=True)
+with k3:
+    st.markdown(f"""<div class="kpi-box amber">
+      <p class="kpi-label">SUCCESS FEE MENSUAL</p>
+      <p class="kpi-value" style="color:#F59E0B">${fee_mensual:,}</p>
+      <p class="kpi-desc">{extra_bpd:.1f} bbl/día × $5 × 30d</p>
+    </div>""", unsafe_allow_html=True)
+with k4:
+    color = "#EF4444" if payback_val > 6 else "#00E5A0"
+    st.markdown(f"""<div class="kpi-box {'red' if payback_val > 6 else ''}">
+      <p class="kpi-label">PAYBACK</p>
+      <p class="kpi-value" style="color:{color}">{payback_val} <span style="font-size:16px">meses</span></p>
+      <p class="kpi-desc">Retorno de inversión real</p>
+    </div>""", unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ── Gráfica + Engineering Insights ────────────────────
+cl, cr = st.columns([2.3,1.7])
+
+with cl:
+    oil_js  = d.get("oil_price_usd", 74.5)
+    bopd_js = 500  # base de producción referencia
+
+    script_grafica = f"""
+    <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
+    <div id='plot' style='height:400px;background:#0D1520;
+         border-radius:12px;border:1px solid rgba(255,255,255,0.05)'></div>
+    <script>
+    var x      = Array.from({{length:48}},(_,i)=>i);
+    var bopd   = {bopd_js};
+    var mejora = {mejora_val} / 100;
+    var y_base = x.map(i => bopd * Math.exp(-0.005*i));
+    var y_flow = x.map(i => i<5 ? y_base[i] : bopd*(1+mejora)*Math.exp(-0.0025*i));
+    var t1={{x:x,y:y_base,name:'Status Quo',type:'scatter',
+             line:{{color:'#EF4444',dash:'dot',width:2}}}};
+    var t2={{x:x,y:y_flow,name:'FlowBio EOR',type:'scatter',
+             line:{{color:'#00E5A0',width:3}},
+             fill:'tonexty',fillcolor:'rgba(0,229,160,0.08)'}};
+    var layout={{
+      paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+      font:{{color:'#64748B',family:'DM Mono',size:10}},
+      margin:{{t:20,b:40,l:55,r:20}},
+      xaxis:{{gridcolor:'#152335',title:{{text:'MESES'}}}},
+      yaxis:{{gridcolor:'#152335',title:{{text:'BBL/DÍA'}}}},
+      showlegend:true,
+      legend:{{bgcolor:'rgba(0,0,0,0)',font:{{color:'#8BA8C0'}}}},
+    }};
+    Plotly.newPlot('plot',[t1,t2],layout,{{responsive:true,displayModeBar:false}});
+    </script>"""
+    components.html(script_grafica, height=420)
+
+with cr:
+    rec     = d.get("recomendacion","—")
+    rec_col = "#00E5A0" if rec=="INYECTAR" else "#F59E0B" if rec=="EVALUAR" else "#64748B"
+    skin_v  = d.get("skin",0)
+    skin_col= "#EF4444" if skin_v>8 else "#F59E0B" if skin_v>3 else "#00E5A0"
+
+    html_ins = f"""
+    <div style='background:#0D1520;padding:24px;border-radius:12px;
+                border:1px solid rgba(0,229,160,0.2);height:415px;overflow-y:auto'>
+      <p style='color:#00E5A0;font-family:DM Mono;font-size:11px;
+                letter-spacing:1.5px;margin-bottom:16px'>🧠 ENGINEERING INSIGHTS</p>
+
+      <p style='font-family:DM Mono;font-size:13px;color:#22D3EE;margin-bottom:2px'>
+        QUÍMICO: {d.get('quimico','—')}
+      </p>
+      <p style='font-size:11px;color:#8BA8C0;margin-top:0;margin-bottom:12px'>
+        Concentración: {d.get('ppm',0)} ppm · PV: {d.get('vol_pv',0)}
+      </p>
+
+      <p style='font-family:DM Mono;font-size:13px;color:#22D3EE;margin-bottom:2px'>
+        CAUDAL: {d.get('bwpd',0)} bwpd
+      </p>
+      <p style='font-size:11px;color:#8BA8C0;margin-top:0;margin-bottom:12px'>
+        Límite de fractura: max {d.get('lim_psi',0):,} psi
+      </p>
+
+      <p style='font-family:DM Mono;font-size:13px;color:#22D3EE;margin-bottom:2px'>
+        WC REDUCTION: {d.get('wc_red',0):.1f}%
+      </p>
+      <p style='font-size:11px;color:#8BA8C0;margin-top:0;margin-bottom:12px'>
+        Reducción de corte de agua estimada
+      </p>
+
+      <hr style='opacity:0.1;margin:14px 0'>
+
+      <p style='color:#64748B;font-family:DM Mono;font-size:10px;letter-spacing:1px'>
+        FACTOR SKIN:
+      </p>
+      <p style='color:{skin_col};font-family:Syne;font-size:28px;
+                font-weight:800;margin:2px 0'>S = {skin_v:.2f}</p>
+
+      <p style='color:#64748B;font-family:DM Mono;font-size:10px;
+                letter-spacing:1px;margin-top:12px'>RECOMENDACIÓN PIML:</p>
+      <p style='color:{rec_col};font-family:DM Mono;font-size:13px;
+                font-weight:500'>{rec}</p>
+
+      <hr style='opacity:0.1;margin:14px 0'>
+
+      <p style='color:#64748B;font-family:DM Mono;font-size:10px'>EUR ACUMULADO (5 años):</p>
+      <p style='color:#00E5A0;font-family:Syne;font-size:26px;font-weight:800;margin:0'>
+        {d.get('eur',0):,} <span style='font-size:13px;color:#64748B'>bbls</span>
+      </p>
+    </div>"""
+    st.markdown(html_ins, unsafe_allow_html=True)
+
     st.markdown("<br>", unsafe_allow_html=True)
-    k1, k2, k3, k4 = st.columns(4)
-    with k1: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">CRUDO INCREMENTAL (MES)</p><p class="kpi-value">+{barriles_extra_mes:,} <span style="font-size:16px;">bbls</span></p><p class="kpi-desc">Producción extra estimada.</p></div>', unsafe_allow_html=True)
-    with k2: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">VALOR EXTRA GENERADO</p><p class="kpi-value">${valor_extra:,.0f}</p><p class="kpi-desc">Ingreso adicional bruto.</p></div>', unsafe_allow_html=True)
-    with k3: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">SUCCESS FEE</p><p class="kpi-value">${success_fee:,.0f}</p><p class="kpi-desc">Nuestra tarifa por éxito.</p></div>', unsafe_allow_html=True)
-    with k4: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">PAYBACK</p><p class="kpi-value">{payback_val} <span style="font-size:16px;">Meses</span></p><p class="kpi-desc">Retorno de inversión.</p></div>', unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # ══════════════════════════════════════════════════════
-    # ZONA INFERIOR: GRÁFICA Y REPORTE CLÍNICO
-    # ══════════════════════════════════════════════════════
-    cl, cr = st.columns([2.3, 1.7])
-    
-    with cl:
-        # Gráfica Plotly alimentada por la IA
-        script_grafica = f"""
-        <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
-        <div id='plot' style='height:400px; background:#0D1520; border-radius:12px; border:1px solid rgba(255,255,255,0.05);'></div>
-        <script>
-            var x = Array.from({{length:40}}, (_,i)=>i);
-            var y_base = x.map(i => 350 * Math.exp(-0.06 * i)); 
-            var mejora = {mejora_val} / 100;
-            var y_flowbio = x.map(i => i < 5 ? y_base[i] : y_base[i] + (350 * mejora * Math.exp(-0.015 * (i-5))));
-            
-            var trace1 = {{x: x, y: y_base, name: 'Status Quo', line: {{color: '#EF4444', dash: 'dot'}}}};
-            var trace2 = {{x: x, y: y_flowbio, name: 'FlowBio EOR', line: {{color: '#00E5A0', width: 4}}, fill: 'tonexty', fillcolor: 'rgba(0,229,160,0.1)'}};
-            
-            var layout = {{paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: {{color: '#64748B'}}, margin:{{t:30, b:40, l:50, r:20}} }};
-            Plotly.newPlot('plot', [trace1, trace2], layout);
-        </script>
-        """
-        components.html(script_grafica, height=420)
-        
-    with cr:
-        # Insights Explicados leyendo S3
-        html_parts = [
-            "<div style='background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); height:415px;'>",
-            "<p style='color:#00E5A0; font-weight:800; font-size:12px;'>🧠 ENGINEERING INSIGHTS</p>",
-            f"<p style='font-family:\"DM Mono\"; font-size:14px; color:#22D3EE; margin-bottom:2px;'>QUÍMICO: {d.get('quimico', 'Polímero Avanzado')}</p>",
-            f"<p style='font-size:11px; color:#8BA8C0; margin-top:0px; margin-bottom:15px;'>Concentración recomendada: {d.get('ppm', 1500)} ppm.</p>",
-            f"<p style='font-family:\"DM Mono\"; font-size:14px; color:#22D3EE; margin-bottom:2px;'>CAUDAL: {d.get('bwpd', 350)} bwpd</p>",
-            f"<p style='font-size:11px; color:#8BA8C0; margin-top:0px; margin-bottom:15px;'>Límite de fractura: Max {d.get('lim_psi', 3000)} psi.</p>",
-            "<hr style='opacity:0.1; margin:15px 0;'>",
-            f"<p style='color:#64748B; font-size:10px; font-weight:600;'>INCREMENTAL TOTAL (EUR):</p>",
-            f"<p style='color:#00E5A0; font-size:32px; font-weight:800; margin:0;'>{d.get('eur', 0):,} <span style='font-size:14px; color:#64748B;'>bbls</span></p>",
-            "</div>"
-        ]
-        st.markdown("".join(html_parts), unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.download_button("📥 DESCARGAR REPORTE PDF", data=generate_corporate_pdf(pozo_seleccionado, d), file_name=f"Reporte_FlowBio_{pozo_seleccionado}.pdf", mime="application/pdf")
+    st.download_button(
+        "📥 DESCARGAR REPORTE PDF",
+        data=generate_pdf(pozo_sel, d),
+        file_name=f"FlowBio_Report_{pozo_sel.replace(' ','_')}.pdf",
+        mime="application/pdf",
+    )
