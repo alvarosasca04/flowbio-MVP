@@ -111,7 +111,7 @@ if not st.session_state.auth:
 
 # 🟡 FASE 2: PANTALLA INTERMEDIA DE SIMULACIÓN DE AGENTES
 elif st.session_state.auth and not st.session_state.simulated:
-    st.markdown("<h2 style='text-align:center; color:white; font-family:Syne;'>Orquestador de Agentes IA</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:white; font-family:Syne;'>Agentes Flow Bio EOR</h2>", unsafe_allow_html=True)
     st.markdown("<p style='text-align:center; color:#8BA8C0;'>Inicia el pipeline para extraer, analizar y simular los datos del repositorio S3.</p>", unsafe_allow_html=True)
     
     st.markdown("<br><br>", unsafe_allow_html=True)
