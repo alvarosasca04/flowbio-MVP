@@ -131,7 +131,7 @@ else:
     pozo_seleccionado = st.selectbox("📍 Seleccione un pozo para Análisis de Declinación:", lista_pozos)
     d = datos_pozos[pozo_seleccionado]
 
-    # Cálculos financieros del pozo seleccionado (Tus cálculos exactos)
+    # Cálculos financieros del pozo seleccionado
     eur_val = d.get('eur', 0)
     barriles_extra_mes = int(eur_val / 60) # EUR dividido en 60 meses
     valor_extra = barriles_extra_mes * 74.5 
@@ -154,44 +154,98 @@ else:
     st.markdown("<br>", unsafe_allow_html=True)
     
     # ══════════════════════════════════════════════════════
-    # ZONA INFERIOR: GRÁFICA Y REPORTE CLÍNICO
+    # ZONA INFERIOR: GRÁFICA Y REPORTE CLÍNICO AFINADOS
     # ══════════════════════════════════════════════════════
     cl, cr = st.columns([2.3, 1.7])
     
     with cl:
-        # Gráfica Plotly original
+        # Gráfica Plotly con diseño Premium UI/UX
         script_grafica = f"""
         <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
-        <div id='plot' style='height:400px; background:#0D1520; border-radius:12px; border:1px solid rgba(255,255,255,0.05);'></div>
+        <div id='plot' style='height:420px; background:#0D1520; border-radius:12px; border:1px solid rgba(255,255,255,0.05); box-shadow: 0 8px 16px rgba(0,0,0,0.4);'></div>
         <script>
-            var x = Array.from({{length:40}}, (_,i)=>i);
-            var y_base = x.map(i => 350 * Math.exp(-0.06 * i)); 
+            var x = Array.from({{length:48}}, (_,i)=>i);
+            var bopd_base = 350; 
             var mejora = {mejora_val} / 100;
-            var y_flowbio = x.map(i => i < 5 ? y_base[i] : y_base[i] + (350 * mejora * Math.exp(-0.015 * (i-5))));
             
-            var trace1 = {{x: x, y: y_base, name: 'Status Quo', line: {{color: '#EF4444', dash: 'dot'}}}};
-            var trace2 = {{x: x, y: y_flowbio, name: 'FlowBio EOR', line: {{color: '#00E5A0', width: 4}}, fill: 'tonexty', fillcolor: 'rgba(0,229,160,0.1)'}};
+            var y_base = x.map(i => bopd_base * Math.exp(-0.06 * i)); 
+            var y_flowbio = x.map(i => i < 5 ? y_base[i] : y_base[i] + (bopd_base * mejora * Math.exp(-0.015 * (i-5))));
             
-            var layout = {{paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: {{color: '#64748B'}}, margin:{{t:30, b:40, l:50, r:20}} }};
-            Plotly.newPlot('plot', [trace1, trace2], layout);
+            var trace1 = {{
+                x: x, y: y_base, 
+                name: 'Status Quo', 
+                type: 'scatter',
+                line: {{color: '#EF4444', dash: 'dot', width: 2}},
+                hovertemplate: '<b>Status Quo:</b> %{{y:.1f}} bbl/d<extra></extra>'
+            }};
+            
+            var trace2 = {{
+                x: x, y: y_flowbio, 
+                name: 'FlowBio EOR', 
+                type: 'scatter',
+                line: {{color: '#00E5A0', width: 3}}, 
+                fill: 'tonexty', 
+                fillcolor: 'rgba(0,229,160,0.12)',
+                hovertemplate: '<b>FlowBio:</b> %{{y:.1f}} bbl/d<extra></extra>'
+            }};
+            
+            var layout = {{
+                title: {{
+                    text: '<b>Curva de Declinación y Recuperación (4 Años)</b>', 
+                    font: {{color: '#FFFFFF', family: 'Syne', size: 14}}, 
+                    x: 0.05, y: 0.95
+                }},
+                paper_bgcolor: 'transparent', 
+                plot_bgcolor: 'transparent', 
+                font: {{color: '#8BA8C0', family: 'DM Mono', size: 10}}, 
+                margin: {{t:60, b:40, l:50, r:20}},
+                xaxis: {{title: 'MESES', gridcolor: '#152335', zeroline: false}},
+                yaxis: {{title: 'BOPD', gridcolor: '#152335', zeroline: false}},
+                showlegend: true,
+                legend: {{orientation: 'h', y: 1.12, x: 1, xanchor: 'right', bgcolor: 'rgba(0,0,0,0)', font: {{color: '#E2E8F0'}}}},
+                hovermode: 'x unified',
+                annotations: [
+                    {{
+                        x: 5, y: y_base[5],
+                        xref: 'x', yref: 'y',
+                        text: 'INYECCIÓN PIML',
+                        showarrow: true,
+                        arrowhead: 2,
+                        arrowsize: 1,
+                        arrowwidth: 1.5,
+                        ax: 0, ay: -50,
+                        font: {{color: '#22D3EE', family: 'DM Mono', size: 9}},
+                        arrowcolor: '#22D3EE'
+                    }}
+                ]
+            }};
+            Plotly.newPlot('plot', [trace1, trace2], layout, {{responsive: true, displayModeBar: false}});
         </script>
         """
-        components.html(script_grafica, height=420)
+        components.html(script_grafica, height=450)
         
     with cr:
-        # Insights Explicados leyendo S3
+        # Insights Explicados con diseño Flexbox y tipografía mejorada
         html_parts = [
-            "<div style='background:#0D1520; padding:25px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); height:415px;'>",
-            "<p style='color:#00E5A0; font-weight:800; font-size:12px;'>🧠 ENGINEERING INSIGHTS</p>",
-            f"<p style='font-family:\"DM Mono\"; font-size:14px; color:#22D3EE; margin-bottom:2px;'>QUÍMICO: {d.get('quimico', 'Polímero Avanzado')}</p>",
-            f"<p style='font-size:11px; color:#8BA8C0; margin-top:0px; margin-bottom:15px;'>Concentración recomendada: {d.get('ppm', 1500)} ppm.</p>",
-            f"<p style='font-family:\"DM Mono\"; font-size:14px; color:#22D3EE; margin-bottom:2px;'>CAUDAL: {d.get('bwpd', 350)} bwpd</p>",
-            f"<p style='font-size:11px; color:#8BA8C0; margin-top:0px; margin-bottom:15px;'>Límite de fractura: Max {d.get('lim_psi', 3000)} psi.</p>",
-            "<hr style='opacity:0.1; margin:15px 0;'>",
-            f"<p style='color:#64748B; font-size:10px; font-weight:600;'>INCREMENTAL TOTAL (EUR):</p>",
-            f"<p style='color:#00E5A0; font-size:32px; font-weight:800; margin:0;'>{d.get('eur', 0):,} <span style='font-size:14px; color:#64748B;'>bbls</span></p>",
+            "<div style='background:#0D1520; padding:28px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); height:420px; display:flex; flex-direction:column; justify-content:space-between;'>",
+            "<div>",
+            "<p style='color:#00E5A0; font-family:\"DM Mono\"; font-weight:800; font-size:11px; letter-spacing:1.5px; margin-bottom:20px;'>⚡ DIAGNÓSTICO DE INYECCIÓN</p>",
+            
+            f"<p style='font-family:\"Syne\"; font-size:16px; font-weight:700; color:#22D3EE; margin-bottom:2px;'>🧪 {d.get('quimico', 'Polímero Avanzado').upper()}</p>",
+            f"<p style='font-family:\"Inter\"; font-size:12px; color:#8BA8C0; margin-top:0px; margin-bottom:15px;'>Dosificación óptima: <b style='color:#E2E8F0'>{d.get('ppm', 1500)} ppm</b> &nbsp;|&nbsp; PV: <b style='color:#E2E8F0'>{d.get('vol_pv', 0.29)}</b></p>",
+            
+            f"<p style='font-family:\"Syne\"; font-size:16px; font-weight:700; color:#22D3EE; margin-bottom:2px;'>🌊 PARÁMETROS DE BOMBEO</p>",
+            f"<p style='font-family:\"Inter\"; font-size:12px; color:#8BA8C0; margin-top:0px; margin-bottom:15px;'>Caudal objetivo: <b style='color:#E2E8F0'>{d.get('bwpd', 350)} BWPD</b><br>Presión máxima (Fractura): <b style='color:#EF4444'>{d.get('lim_psi', 3000):,} psi</b></p>",
+            "</div>",
+            
+            "<div>",
+            "<hr style='border:none; border-top:1px dashed rgba(255,255,255,0.1); margin:15px 0;'>",
+            f"<p style='color:#64748B; font-family:\"DM Mono\"; font-size:10px; font-weight:600; letter-spacing:1px;'>IMPACTO TOTAL ACUMULADO (EUR):</p>",
+            f"<p style='color:#00E5A0; font-family:\"Syne\"; font-size:36px; font-weight:800; margin:0; line-height:1;'>{d.get('eur', 0):,} <span style='font-size:14px; color:#64748B; font-family:\"DM Mono\";'>bbls</span></p>",
+            "</div>",
             "</div>"
         ]
         st.markdown("".join(html_parts), unsafe_allow_html=True)
+        
         st.markdown("<br>", unsafe_allow_html=True)
-        st.download_button("📥 DESCARGAR REPORTE PDF", data=generate_corporate_pdf(pozo_seleccionado, d), file_name=f"Reporte_FlowBio_{pozo_seleccionado}.pdf", mime="application/pdf")
+        st.download_button("📥 DESCARGAR REPORTE EJECUTIVO PDF", data=generate_corporate_pdf(pozo_seleccionado, d), file_name=f"Reporte_FlowBio_{pozo_seleccionado}.pdf", mime="application/pdf")
