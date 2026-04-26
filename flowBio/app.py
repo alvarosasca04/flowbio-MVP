@@ -56,21 +56,20 @@ st.markdown("""
 # ══════════════════════════════════════════════════════
 def load_data_from_s3():
     try:
-        # ... (mantén tu configuración de AWS igual) ...
+        try:
+            aws_key = st.secrets["aws"]["AWS_ACCESS_KEY_ID"]
+            aws_sec = st.secrets["aws"]["AWS_SECRET_ACCESS_KEY"]
+        except Exception:
+            aws_key = st.secrets["AWS_ACCESS_KEY_ID"]
+            aws_sec = st.secrets["AWS_SECRET_ACCESS_KEY"]
+        s3 = boto3.client('s3', aws_access_key_id=aws_key, aws_secret_access_key=aws_sec, region_name="us-east-2")
         response = s3.get_object(
             Bucket="flowbio-data-lake-v2-627807503177-us-east-2-an",
             Key="agentes/dashboard_data.json"
         )
-        data = json.loads(response['Body'].read().decode('utf-8'))
-        
-        # LOGICA DE CORRECCIÓN:
-        # Si el JSON es una lista, convertirla a dict o manejarla. 
-        # Si tiene la llave 'dashboard_data', úsala. Si no, usa el root.
-        if isinstance(data, dict) and "dashboard_data" in data:
-            return data["dashboard_data"]
-        return data 
+        return json.loads(response['Body'].read().decode('utf-8'))
     except Exception as e:
-        st.error(f"Error crítico de lectura: {e}")
+        st.error(f"Error al cargar datos desde S3. ({e})")
         return None
 
 
