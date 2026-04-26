@@ -223,13 +223,12 @@ elif st.session_state.auth and st.session_state.simulated:
             st.session_state.simulated = False
             st.rerun()                     
 
-    # --- LÓGICA DINÁMICA CORREGIDA ---
+    # --- LÓGICA DINÁMICA ---
     datos_pozos = st.session_state.all_data
 
     if "dashboard_data" in datos_pozos:
         datos_pozos = datos_pozos["dashboard_data"]
 
-    # FIX: Extraemos los nombres de los pozos directamente para evitar vaciar la lista
     lista_pozos = list(datos_pozos.keys())
 
     if not lista_pozos:
@@ -242,4 +241,33 @@ elif st.session_state.auth and st.session_state.simulated:
     eur_val = d.get('eur', 0)
     barriles_extra_mes = int(eur_val / 60)
     valor_extra = barriles_extra_mes * 74.5 
-    success_fee =
+    success_fee = d.get('fee', 0)
+    payback_val = d.get('payback', 0)
+    mejora_val = d.get('mejora', 0)
+    
+    proyeccion_data = d.get('proyeccion', [])
+    proyeccion_json = json.dumps(proyeccion_data) if proyeccion_data else "[]"
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    k1, k2, k3, k4 = st.columns(4)
+    with k1: 
+        st.markdown(f'<div class="kpi-box"><p class="kpi-label">CRUDO INCREMENTAL (MES)</p><p class="kpi-value">+{barriles_extra_mes:,} <span style="font-size:16px;">bbls</span></p><p class="kpi-desc">Producción extra estimada.</p></div>', unsafe_allow_html=True)
+    with k2: 
+        st.markdown(f'<div class="kpi-box"><p class="kpi-label">VALOR EXTRA GENERADO</p><p class="kpi-value">${valor_extra:,.0f}</p><p class="kpi-desc">Ingreso adicional bruto.</p></div>', unsafe_allow_html=True)
+    with k3: 
+        st.markdown(f'<div class="kpi-box"><p class="kpi-label">SUCCESS FEE</p><p class="kpi-value">${success_fee:,.0f}</p><p class="kpi-desc">Nuestra tarifa por éxito.</p></div>', unsafe_allow_html=True)
+    with k4: 
+        st.markdown(f'<div class="kpi-box"><p class="kpi-label">PAYBACK</p><p class="kpi-value">{payback_val} <span style="font-size:16px;">Meses</span></p><p class="kpi-desc">Retorno de inversión.</p></div>', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    cl, cr = st.columns([2.3, 1.7])
+    
+    with cl:
+        script_grafica = f"""
+        <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
+        <div id='plot' style='height:420px; background:#0D1520; border-radius:12px; border:1px solid rgba(255,255,255,0.05); box-shadow: 0 8px 16px rgba(0,0,0,0.4);'></div>
+        <script>
+            var proy_data = {proyeccion_json};
+            
+            var x = []; var y_flow
