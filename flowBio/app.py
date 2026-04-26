@@ -18,7 +18,6 @@ st.markdown("""
     .stApp { background: #060B11; }
     .block-container { padding: 2rem 3rem !important; }
     
-    /* Fuentes de respaldo */
     body, p, div { font-family: 'Inter', -apple-system, sans-serif !important; }
     .kpi-value, h1, h2 { font-family: 'Syne', sans-serif !important; }
     .kpi-label, code, pre { font-family: 'DM Mono', monospace !important; }
@@ -28,17 +27,19 @@ st.markdown("""
     .kpi-value { font-size: 32px; font-weight: 800; color: #fff; margin: 5px 0; }
     .kpi-desc { font-size: 10px; color: #8BA8C0; margin-top: 5px; line-height: 1.2; }
     
-    /* Estilos de botones */
     .stButton > button { background: #00E5A0 !important; color: #060B11 !important; font-family: 'Syne', sans-serif !important; font-weight: 800 !important; border-radius: 8px !important; padding: 15px 30px !important; width: 100%; transition: all 0.3s ease; }
     .stButton > button:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(0, 229, 160, 0.4); }
     
-    /* Estilo para la consola de la fase 2 */
     .console-box { background: #0D1520; border: 1px solid rgba(0,229,160,0.3); border-radius: 8px; padding: 20px; font-family: 'DM Mono', monospace; color: #22D3EE; }
+    
+    .diag-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .diag-key { color: #64748B; font-size: 12px; }
+    .diag-val { color: #fff; font-size: 12px; font-weight: 600; }
 </style>
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════
-# 2. FUNCIONES DE CORE (S3 Y PDF MEJORADO)
+# 2. FUNCIONES DE CORE (S3 Y PDF)
 # ══════════════════════════════════════════════════════
 def load_data_from_s3():
     try:
@@ -49,50 +50,61 @@ def load_data_from_s3():
             aws_key = st.secrets["AWS_ACCESS_KEY_ID"]
             aws_sec = st.secrets["AWS_SECRET_ACCESS_KEY"]
             
-        s3 = boto3.client('s3', aws_access_key_id=aws_key, aws_secret_access_key=aws_sec, region_name="us-east-2")
-        response = s3.get_object(Bucket="flowbio-data-lake-v2-627807503177-us-east-2-an", Key="agentes/dashboard_data.json")
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=aws_key,
+            aws_secret_access_key=aws_sec,
+            region_name="us-east-2"
+        )
+        response = s3.get_object(
+            Bucket="flowbio-data-lake-v2-627807503177-us-east-2-an",
+            Key="agentes/dashboard_data.json"
+        )
         return json.loads(response['Body'].read().decode('utf-8'))
     except Exception as e:
         st.error(f"Error al cargar datos desde S3. Verifica tus credenciales. ({e})")
         return None
 
+
 def clean_text(text):
-    if text is None: return ""
+    if text is None:
+        return ""
     return str(text).replace('·', '.').replace('²', '2').encode('latin-1', errors='replace').decode('latin-1')
+
 
 def generate_corporate_pdf(well, d):
     eur_val = d.get('eur', 0)
     barriles_extra_mes = int(eur_val / 60)
-    valor_extra = barriles_extra_mes * 74.5 
-    
+    valor_extra = barriles_extra_mes * 74.5
+
     pdf = FPDF()
     pdf.add_page()
-    
+
     pdf.set_fill_color(6, 11, 17)
     pdf.rect(0, 0, 210, 297, 'F')
-    
+
     pdf.set_font('Arial', 'B', 24)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(0, 10, clean_text('FlowBio Executive Report'), 0, 1, 'L')
-    
+
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(0, 229, 160)
     pdf.cell(0, 10, clean_text(f'Pozo Analizado: {well}'), 0, 1, 'L')
-    
+
     pdf.set_font('Arial', '', 10)
     pdf.set_text_color(139, 168, 192)
-    pdf.cell(0, 8, clean_text(f'Fecha de Simulación: {datetime.now().strftime("%Y-%m-%d %H:%M")}'), 0, 1, 'L')
-    
+    pdf.cell(0, 8, clean_text(f'Fecha de Simulacion: {datetime.now().strftime("%Y-%m-%d %H:%M")}'), 0, 1, 'L')
+
     pdf.set_draw_color(0, 229, 160)
     pdf.set_line_width(0.5)
     pdf.line(10, 45, 200, 45)
     pdf.ln(12)
-    
+
     pdf.set_font('Arial', 'B', 14)
     pdf.set_text_color(34, 211, 238)
     pdf.cell(0, 10, clean_text('1. IMPACTO FINANCIERO PROYECTADO'), 0, 1, 'L')
     pdf.ln(2)
-    
+
     fin_data = [
         ["Crudo Incremental (Mensual):", f"+{barriles_extra_mes:,} bbls"],
         ["Valor Extra Generado (Mensual):", f"${valor_extra:,.0f} USD"],
@@ -100,27 +112,26 @@ def generate_corporate_pdf(well, d):
         ["Retorno de Inversion (Payback):", f"{d.get('payback', 0)} Meses"],
         ["Recuperacion Total a 5 anos (EUR):", f"{eur_val:,} bbls"]
     ]
-    
+
     pdf.set_fill_color(13, 21, 32)
     pdf.set_draw_color(30, 41, 59)
     pdf.set_line_width(0.2)
-    
+
     for k, v in fin_data:
         pdf.set_text_color(200, 200, 200)
         pdf.set_font('Arial', '', 11)
         pdf.cell(100, 10, clean_text(" " + k), border='B', fill=True)
-        
         pdf.set_text_color(255, 255, 255)
         pdf.set_font('Arial', 'B', 11)
         pdf.cell(90, 10, clean_text(" " + v), border='B', ln=1, align='R', fill=True)
-        
+
     pdf.ln(10)
-    
+
     pdf.set_font('Arial', 'B', 14)
     pdf.set_text_color(34, 211, 238)
     pdf.cell(0, 10, clean_text('2. DIAGNOSTICO Y PRESCRIPCION PIML'), 0, 1, 'L')
     pdf.ln(2)
-    
+
     eng_data = [
         ["Sistema Quimico Recomendado:", str(d.get('quimico', 'Polimero Avanzado')).upper()],
         ["Dosificacion Optima:", f"{d.get('ppm', 1500)} ppm"],
@@ -130,12 +141,11 @@ def generate_corporate_pdf(well, d):
         ["Viscosidad Plastica del Fluido (PV):", f"{d.get('visc_p', 98.4)} cP"],
         ["Punto de Cedencia (Yield Point):", f"{d.get('yield_p', 28.9)} lb/ft2"]
     ]
-    
+
     for k, v in eng_data:
         pdf.set_text_color(200, 200, 200)
         pdf.set_font('Arial', '', 11)
         pdf.cell(100, 10, clean_text(" " + k), border='B', fill=True)
-        
         pdf.set_text_color(255, 255, 255)
         pdf.set_font('Arial', 'B', 11)
         pdf.cell(90, 10, clean_text(" " + v), border='B', ln=1, align='R', fill=True)
@@ -144,8 +154,9 @@ def generate_corporate_pdf(well, d):
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(100, 116, 139)
     pdf.cell(0, 10, clean_text('FlowBio Subsurface OS . Simulacion IA PIML . Documento Confidencial . www.flowbio.ai'), 0, 0, 'C')
-        
+
     return pdf.output(dest='S').encode('latin-1', errors='replace')
+
 
 # ══════════════════════════════════════════════════════
 # 3. CONTROLADOR DE ESTADOS (STATE MACHINE)
@@ -156,9 +167,14 @@ if 'simulated' not in st.session_state:
     st.session_state.simulated = False
 
 
-# 🟢 FASE 1: PANTALLA DE ACCESO
+# ── FASE 1: PANTALLA DE ACCESO ──────────────────────
 if not st.session_state.auth:
-    st.markdown("<div style='text-align:center; margin-top:20vh;'><h1 style='color:white; font-family:Syne; font-size:80px;'>FlowBio<span style='color:#00E5A0'>.</span></h1></div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='text-align:center; margin-top:20vh;'>"
+        "<h1 style='color:white; font-family:Syne; font-size:80px;'>FlowBio<span style='color:#00E5A0'>.</span></h1>"
+        "</div>",
+        unsafe_allow_html=True
+    )
     _, c, _ = st.columns([1, 0.8, 1])
     with c:
         pwd = st.text_input("PASSWORD:", type="password")
@@ -169,19 +185,26 @@ if not st.session_state.auth:
             elif pwd != "":
                 st.error("Contraseña incorrecta")
 
-# 🟡 FASE 2: PANTALLA INTERMEDIA DE SIMULACIÓN DE AGENTES
+
+# ── FASE 2: SIMULACIÓN DE AGENTES ───────────────────
 elif st.session_state.auth and not st.session_state.simulated:
-    st.markdown("<h2 style='text-align:center; color:white; font-family:Syne;'>FlowBio EORIA</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#8BA8C0;'>Inicia el pipeline para extraer, analizar y simular los datos del repositorio S3.</p>", unsafe_allow_html=True)
-    
+    st.markdown(
+        "<h2 style='text-align:center; color:white; font-family:Syne;'>FlowBio EORIA</h2>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        "<p style='text-align:center; color:#8BA8C0;'>Inicia el pipeline para extraer, analizar y simular los datos del repositorio S3.</p>",
+        unsafe_allow_html=True
+    )
+
     st.markdown("<br><br>", unsafe_allow_html=True)
     _, c, _ = st.columns([1, 1.5, 1])
     with c:
         if st.button("🚀 INICIAR SIMULACIÓN Y ANÁLISIS"):
-            
+
             status_box = st.empty()
             progress_bar = st.progress(0)
-            
+
             pasos_agentes = [
                 "📡 Conectando con AWS S3 (raw-datak-repository)...",
                 "📊 Agente 1 (Ing. Datos): Extrayendo y limpiando archivos Excel...",
@@ -190,20 +213,26 @@ elif st.session_state.auth and not st.session_state.simulated:
                 "🌱 Agente 4 (ESG): Calculando huella de carbono y ahorros CBAM...",
                 "📈 Agente 5 (Consultor): Generando Gemelo Digital Financiero..."
             ]
-            
+
             consola_texto = ""
             for i, paso in enumerate(pasos_agentes):
                 consola_texto += f"> {paso}<br>"
-                status_box.markdown(f"<div class='console-box'>{consola_texto}</div>", unsafe_allow_html=True)
+                status_box.markdown(
+                    "<div class='console-box'>" + consola_texto + "</div>",
+                    unsafe_allow_html=True
+                )
                 progress_bar.progress((i + 1) * 16)
-                time.sleep(1.2) 
-            
+                time.sleep(1.2)
+
             consola_texto += "<br><span style='color:#00E5A0;'>✅ Sincronización exitosa. Abriendo Command Center...</span>"
-            status_box.markdown(f"<div class='console-box'>{consola_texto}</div>", unsafe_allow_html=True)
+            status_box.markdown(
+                "<div class='console-box'>" + consola_texto + "</div>",
+                unsafe_allow_html=True
+            )
             progress_bar.progress(100)
-            
+
             st.session_state.all_data = load_data_from_s3()
-            
+
             if st.session_state.all_data:
                 time.sleep(1.5)
                 st.session_state.simulated = True
@@ -211,7 +240,8 @@ elif st.session_state.auth and not st.session_state.simulated:
             else:
                 st.error("No se pudo cargar la base de datos de S3.")
 
-# 🔵 FASE 3: DASHBOARD PRINCIPAL (COMMAND CENTER)
+
+# ── FASE 3: DASHBOARD PRINCIPAL (COMMAND CENTER) ────
 elif st.session_state.auth and st.session_state.simulated:
     c_title, c_logout = st.columns([4, 1])
     with c_title:
@@ -221,9 +251,9 @@ elif st.session_state.auth and st.session_state.simulated:
         if st.button("🏠 CERRAR SESIÓN"):
             st.session_state.auth = False
             st.session_state.simulated = False
-            st.rerun()                     
+            st.rerun()
 
-    # --- LÓGICA DINÁMICA ---
+    # ── Datos dinámicos ──
     datos_pozos = st.session_state.all_data
 
     if "dashboard_data" in datos_pozos:
@@ -240,34 +270,140 @@ elif st.session_state.auth and st.session_state.simulated:
 
     eur_val = d.get('eur', 0)
     barriles_extra_mes = int(eur_val / 60)
-    valor_extra = barriles_extra_mes * 74.5 
+    valor_extra = barriles_extra_mes * 74.5
     success_fee = d.get('fee', 0)
     payback_val = d.get('payback', 0)
-    mejora_val = d.get('mejora', 0)
-    
-    proyeccion_data = d.get('proyeccion', [])
-    proyeccion_json = json.dumps(proyeccion_data) if proyeccion_data else "[]"
 
+    # ── KPIs ──
     st.markdown("<br>", unsafe_allow_html=True)
     k1, k2, k3, k4 = st.columns(4)
-    with k1: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">CRUDO INCREMENTAL (MES)</p><p class="kpi-value">+{barriles_extra_mes:,} <span style="font-size:16px;">bbls</span></p><p class="kpi-desc">Producción extra estimada.</p></div>', unsafe_allow_html=True)
-    with k2: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">VALOR EXTRA GENERADO</p><p class="kpi-value">${valor_extra:,.0f}</p><p class="kpi-desc">Ingreso adicional bruto.</p></div>', unsafe_allow_html=True)
-    with k3: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">SUCCESS FEE</p><p class="kpi-value">${success_fee:,.0f}</p><p class="kpi-desc">Nuestra tarifa por éxito.</p></div>', unsafe_allow_html=True)
-    with k4: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">PAYBACK</p><p class="kpi-value">{payback_val} <span style="font-size:16px;">Meses</span></p><p class="kpi-desc">Retorno de inversión.</p></div>', unsafe_allow_html=True)
+    with k1:
+        st.markdown(
+            f'<div class="kpi-box">'
+            f'<p class="kpi-label">CRUDO INCREMENTAL (MES)</p>'
+            f'<p class="kpi-value">+{barriles_extra_mes:,} <span style="font-size:16px;">bbls</span></p>'
+            f'<p class="kpi-desc">Producción extra estimada.</p>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+    with k2:
+        st.markdown(
+            f'<div class="kpi-box">'
+            f'<p class="kpi-label">VALOR EXTRA GENERADO</p>'
+            f'<p class="kpi-value">${valor_extra:,.0f}</p>'
+            f'<p class="kpi-desc">Ingreso adicional bruto mensual.</p>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+    with k3:
+        st.markdown(
+            f'<div class="kpi-box">'
+            f'<p class="kpi-label">SUCCESS FEE</p>'
+            f'<p class="kpi-value">${success_fee:,.0f}</p>'
+            f'<p class="kpi-desc">Nuestra tarifa por éxito.</p>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+    with k4:
+        st.markdown(
+            f'<div class="kpi-box">'
+            f'<p class="kpi-label">PAYBACK</p>'
+            f'<p class="kpi-value">{payback_val} <span style="font-size:16px;">Meses</span></p>'
+            f'<p class="kpi-desc">Retorno de inversión.</p>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
     st.markdown("<br>", unsafe_allow_html=True)
-    
+
+    # ── Gráfica + Panel derecho ──
     cl, cr = st.columns([2.3, 1.7])
-    
+
     with cl:
-        script_grafica = f"""
-        <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
-        <div id='plot' style='height:420px; background:#0D1520; border-radius:12px; border:1px solid rgba(255,255,255,0.05); box-shadow: 0 8px 16px rgba(0,0,0,0.4);'></div>
-        <script>
-            var proy_data = {proyeccion_json};
-            
-            var x = []; var y_flow
+        proyeccion_data = d.get('proyeccion', [])
+        # ──────────────────────────────────────────────────────────────
+        # FIX: NO usar f-string triple-quoted con JSON embebido.
+        # Se construye el HTML concatenando strings para evitar el
+        # SyntaxError "unterminated triple-quoted f-string literal".
+        # ──────────────────────────────────────────────────────────────
+        proyeccion_json = json.dumps(proyeccion_data) if proyeccion_data else "[]"
+
+        script_grafica = (
+            "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>"
+            "<div id='plot' style='height:420px; background:#0D1520; border-radius:12px;"
+            " border:1px solid rgba(255,255,255,0.05); box-shadow:0 8px 16px rgba(0,0,0,0.4);'></div>"
+            "<script>"
+            "  var proy_data = " + proyeccion_json + ";"
+            "  var x = [], y_flowbio = [], y_base = [];"
+            "  for (var i = 0; i < proy_data.length; i++) {"
+            "    x.push(proy_data[i].mes !== undefined ? proy_data[i].mes : i + 1);"
+            "    y_flowbio.push(proy_data[i].flowbio || 0);"
+            "    y_base.push(proy_data[i].base || 0);"
+            "  }"
+            "  var trace1 = {"
+            "    x: x, y: y_flowbio, type: 'scatter', mode: 'lines',"
+            "    name: 'Con FlowBio',"
+            "    line: { color: '#00E5A0', width: 3 }"
+            "  };"
+            "  var trace2 = {"
+            "    x: x, y: y_base, type: 'scatter', mode: 'lines',"
+            "    name: 'Declinación Base',"
+            "    line: { color: '#64748B', width: 2, dash: 'dash' }"
+            "  };"
+            "  var layout = {"
+            "    paper_bgcolor: '#0D1520',"
+            "    plot_bgcolor: '#0D1520',"
+            "    font: { color: '#8BA8C0', family: 'Inter' },"
+            "    title: { text: 'Curva de Declinación — Proyección 5 años',"
+            "             font: { color: '#fff', size: 14 } },"
+            "    xaxis: { title: 'Mes', gridcolor: 'rgba(255,255,255,0.05)', color: '#8BA8C0' },"
+            "    yaxis: { title: 'Producción (BOPD)', gridcolor: 'rgba(255,255,255,0.05)', color: '#8BA8C0' },"
+            "    legend: { font: { color: '#8BA8C0' } },"
+            "    margin: { t: 50, b: 50, l: 60, r: 20 }"
+            "  };"
+            "  Plotly.newPlot('plot', [trace1, trace2], layout, { responsive: true });"
+            "</script>"
+        )
+
+        components.html(script_grafica, height=440)
+
+    with cr:
+        st.markdown(
+            "<h4 style='color:#22D3EE; font-family:Syne; margin-bottom:16px;'>🧪 Diagnóstico PIML</h4>",
+            unsafe_allow_html=True
+        )
+
+        ing_data = [
+            ("Sistema Químico", d.get('quimico', 'Polímero Avanzado')),
+            ("Dosificación", f"{d.get('ppm', 1500)} ppm"),
+            ("Volumen Poroso (PV)", str(d.get('vol_pv', 0.29))),
+            ("Caudal Objetivo", f"{d.get('bwpd', 350)} BWPD"),
+            ("Límite Presión", f"{d.get('lim_psi', 3000):,} psi"),
+            ("Viscosidad PV", f"{d.get('visc_p', 98.4)} cP"),
+            ("Yield Point", f"{d.get('yield_p', 28.9)} lb/ft²"),
+        ]
+
+        rows_html = ""
+        for k, v in ing_data:
+            rows_html += (
+                f"<div class='diag-row'>"
+                f"<span class='diag-key'>{k}</span>"
+                f"<span class='diag-val'>{v}</span>"
+                f"</div>"
+            )
+
+        st.markdown(
+            "<div style='background:#0D1520; border:1px solid rgba(255,255,255,0.06);"
+            " border-radius:12px; padding:20px;'>" + rows_html + "</div>",
+            unsafe_allow_html=True
+        )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        pdf_bytes = generate_corporate_pdf(pozo_seleccionado, d)
+        st.download_button(
+            label="📄 DESCARGAR REPORTE PDF",
+            data=pdf_bytes,
+            file_name=f"FlowBio_Report_{pozo_seleccionado}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            mime="application/pdf"
+        )
