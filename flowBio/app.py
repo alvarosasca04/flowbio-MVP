@@ -43,7 +43,6 @@ def load_data_from_s3():
 
 # ── LECTURA ESTRICTA DE LOS DATOS REALES (CON PROTECCIÓN) ──
 def calcular_kpis(ahorro):
-    # ESCUDO PROTECTOR: Evita que el programa crashee si los datos en S3 son de una versión antigua
     if not isinstance(ahorro, dict):
         ahorro = {}
         
@@ -98,4 +97,64 @@ elif st.session_state.auth and st.session_state.simulated:
 
     st.markdown("<br>", unsafe_allow_html=True)
     k1, k2, k3, k4 = st.columns(4)
-    with k1: st.
+    
+    with k1: 
+        st.markdown(
+            f'<div class="kpi-box"><p class="kpi-label">CRUDO INCREMENTAL (MES)</p><p class="kpi-value">+{int(kpis["barriles_extra_mes"]):,}</p><p class="kpi-sub">bbls / mes</p></div>', 
+            unsafe_allow_html=True
+        )
+    with k2: 
+        st.markdown(
+            f'<div class="kpi-box"><p class="kpi-label">VALOR EXTRA GENERADO</p><p class="kpi-value">${kpis["valor_extra"]:,.0f}</p><p class="kpi-sub">USD / mes</p></div>', 
+            unsafe_allow_html=True
+        )
+    with k3: 
+        st.markdown(
+            f'<div class="kpi-box"><p class="kpi-label">SUCCESS FEE</p><p class="kpi-value">${kpis["success_fee"]:,.0f}</p><p class="kpi-sub">USD / mes · 15%</p></div>', 
+            unsafe_allow_html=True
+        )
+    with k4: 
+        st.markdown(
+            f'<div class="kpi-box"><p class="kpi-label">PAYBACK</p><p class="kpi-value">{kpis["payback_val"]}</p><p class="kpi-sub">Meses</p></div>', 
+            unsafe_allow_html=True
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    cl, cr = st.columns([2.3, 1.7])
+
+    with cl:
+        x_vals = [r.get('mes', i+1) for i, r in enumerate(proyeccion)]
+        chart_json = json.dumps({
+            "x": x_vals, 
+            "p50": [r.get('P50',0) for r in proyeccion], 
+            "p10": [r.get('P10',0) for r in proyeccion], 
+            "p90": [r.get('P90',0) for r in proyeccion]
+        })
+        
+        script_grafica = (
+            "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>"
+            "<div id='plot' style='height:400px; background:#0D1520; border-radius:12px; border:1px solid rgba(255,255,255,0.05);'></div>"
+            "<script> var pd = " + chart_json + ";"
+            "  var t_p90 = { x:pd.x, y:pd.p90, type:'scatter', mode:'lines', name:'P90', line:{color:'rgba(0,229,160,0.3)', width:1}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.08)' };"
+            "  var t_p50 = { x:pd.x, y:pd.p50, type:'scatter', mode:'lines+markers', name:'P50 (Tratamiento)', line:{color:'#00E5A0', width:3}, marker:{size:4, color:'#00E5A0'} };"
+            "  var t_p10 = { x:pd.x, y:pd.p10, type:'scatter', mode:'lines', name:'P10 (Status Quo)', line:{color:'rgba(100,116,139,0.8)', width:2, dash:'dot'} };"
+            "  var layout = { paper_bgcolor:'#0D1520', plot_bgcolor:'#0D1520', font:{color:'#8BA8C0'}, title:{text:'Declinación Base vs Tratamiento', font:{color:'#fff'}}, xaxis:{title:'Meses'}, yaxis:{title:'BOPD'}, legend:{orientation:'h', y:-0.15}, margin:{t:40, b:50, l:50, r:20} };"
+            "  Plotly.newPlot('plot', [t_p10, t_p90, t_p50], layout, {responsive:true});"
+            "</script>"
+        )
+        components.html(script_grafica, height=430)
+
+    with cr:
+        st.markdown("<h4 style='color:#22D3EE; font-family:Syne; margin-bottom:16px;'>📊 Resumen Técnico Real</h4>", unsafe_allow_html=True)
+        
+        p10_prom = sum(r.get('P10',0) for r in proyeccion)/len(proyeccion) if proyeccion else 0
+        p50_prom = sum(r.get('P50',0) for r in proyeccion)/len(proyeccion) if proyeccion else 0
+        
+        diag_data = [
+            ("Pozos Analizados en Lote", f"{len(lista_pozos)} pozos"),
+            ("Status Quo Promedio (P10)", f"{p10_prom:,.1f} BOPD"),
+            ("Tratamiento Promedio (P50)", f"{p50_prom:,.1f} BOPD"),
+            ("EUR Incremental Total", f"{int(kpis['eur_val']):,} bbls")
+        ]
+        rows_html = "".join(f"<div class='diag-row'><span class='diag-key'>{k}</span><span class='diag-val'>{v}</span></div>" for k, v in diag_data)
+        st.markdown("<div style='background:#0D1520; border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px;'>" + rows_html + "</div>", unsafe_allow_html=True)
