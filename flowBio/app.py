@@ -255,7 +255,6 @@ elif st.session_state.auth and st.session_state.simulated:
     d = datos_pozos[pozo_seleccionado]
 
     # ── Extraer datos reales del JSON ──
-    # Estructura confirmada: { "proyeccion": [{mes, P50, P10, P90, mob}, ...], "ahorro": {...} }
     proyeccion = d.get('proyeccion', d.get('PROYECCION', []))
     ahorro     = d.get('ahorro', d.get('AHORRO', {}))
 
@@ -309,90 +308,59 @@ elif st.session_state.auth and st.session_state.simulated:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Gráfica + Panel derecho ──
+    # ── Gráfica + Panel derecho (Diagnóstico) ──
     cl, cr = st.columns([2.3, 1.7])
 
     with cl:
-        # Construir arrays para Plotly desde P10, P50, P90
-        x_vals  = [row.get('mes', i+1)  for i, row in enumerate(proyeccion)]
+        # Construir arrays para Plotly
+        x_vals   = [row.get('mes', i+1) for i, row in enumerate(proyeccion)]
         p50_vals = [row.get('P50', 0)   for row in proyeccion]
         p10_vals = [row.get('P10', 0)   for row in proyeccion]
         p90_vals = [row.get('P90', 0)   for row in proyeccion]
         mob_vals = [row.get('mob', 0)   for row in proyeccion]
 
-        chart_json = json.dumps({
-            "x":   x_vals,
-            "p50": p50_vals,
-            "p10": p10_vals,
-            "p90": p90_vals,
-            "mob": mob_vals
-        })
+        chart_json = json.dumps({"x": x_vals, "p50": p50_vals, "p10": p10_vals, "p90": p90_vals, "mob": mob_vals})
 
         script_grafica = (
             "<script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>"
-            "<div id='plot' style='height:430px; background:#0D1520; border-radius:12px;"
-            " border:1px solid rgba(255,255,255,0.05); box-shadow:0 8px 16px rgba(0,0,0,0.4);'></div>"
+            "<div id='plot' style='height:430px; background:#0D1520; border-radius:12px; border:1px solid rgba(255,255,255,0.05); box-shadow:0 8px 16px rgba(0,0,0,0.4);'></div>"
             "<script>"
             "  var pd = " + chart_json + ";"
-            # P90 banda superior
-            "  var t_p90 = { x:pd.x, y:pd.p90, type:'scatter', mode:'lines', name:'P90 (Optimista)',"
-            "    line:{color:'rgba(0,229,160,0.3)', width:1}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.08)' };"
-            # P50 línea principal
-            "  var t_p50 = { x:pd.x, y:pd.p50, type:'scatter', mode:'lines+markers', name:'P50 — FlowBio',"
-            "    line:{color:'#00E5A0', width:3}, marker:{size:4, color:'#00E5A0'} };"
-            # P10 banda inferior
-            "  var t_p10 = { x:pd.x, y:pd.p10, type:'scatter', mode:'lines', name:'P10 (Conservador)',"
-            "    line:{color:'rgba(100,116,139,0.6)', width:1, dash:'dot'}, fill:'tonexty', fillcolor:'rgba(100,116,139,0.05)' };"
-            # MOB eje secundario
-            "  var t_mob = { x:pd.x, y:pd.mob, type:'scatter', mode:'lines', name:'Movilidad (mob)',"
-            "    line:{color:'#F59E0B', width:2, dash:'dash'}, yaxis:'y2' };"
-            "  var layout = {"
-            "    paper_bgcolor:'#0D1520', plot_bgcolor:'#0D1520',"
-            "    font:{color:'#8BA8C0', family:'Inter'},"
-            "    title:{text:'Curva de Declinación PIML — Proyección ' + pd.x.length + ' meses', font:{color:'#fff', size:14}},"
-            "    xaxis:{title:'Mes', gridcolor:'rgba(255,255,255,0.05)', color:'#8BA8C0', zeroline:false},"
-            "    yaxis:{title:'Producción (BOPD)', gridcolor:'rgba(255,255,255,0.05)', color:'#8BA8C0', zeroline:false},"
-            "    yaxis2:{title:'Movilidad', overlaying:'y', side:'right', color:'#F59E0B',"
-            "            gridcolor:'rgba(245,158,11,0.1)', showgrid:false},"
-            "    legend:{font:{color:'#8BA8C0'}, orientation:'h', y:-0.15},"
-            "    margin:{t:50, b:70, l:65, r:65}"
-            "  };"
+            "  var t_p90 = { x:pd.x, y:pd.p90, type:'scatter', mode:'lines', name:'P90 (Optimista)', line:{color:'rgba(0,229,160,0.3)', width:1}, fill:'tonexty', fillcolor:'rgba(0,229,160,0.08)' };"
+            "  var t_p50 = { x:pd.x, y:pd.p50, type:'scatter', mode:'lines+markers', name:'P50 — FlowBio', line:{color:'#00E5A0', width:3}, marker:{size:4, color:'#00E5A0'} };"
+            "  var t_p10 = { x:pd.x, y:pd.p10, type:'scatter', mode:'lines', name:'P10 (Conservador)', line:{color:'rgba(100,116,139,0.6)', width:1, dash:'dot'}, fill:'tonexty', fillcolor:'rgba(100,116,139,0.05)' };"
+            "  var t_mob = { x:pd.x, y:pd.mob, type:'scatter', mode:'lines', name:'Movilidad (mob)', line:{color:'#F59E0B', width:2, dash:'dash'}, yaxis:'y2' };"
+            "  var layout = { paper_bgcolor:'#0D1520', plot_bgcolor:'#0D1520', font:{color:'#8BA8C0', family:'Inter'}, title:{text:'Curva de Declinación PIML — Proyección ' + pd.x.length + ' meses', font:{color:'#fff', size:14}}, xaxis:{title:'Mes', gridcolor:'rgba(255,255,255,0.05)', color:'#8BA8C0', zeroline:false}, yaxis:{title:'Producción (BOPD)', gridcolor:'rgba(255,255,255,0.05)', color:'#8BA8C0', zeroline:false}, yaxis2:{title:'Movilidad', overlaying:'y', side:'right', color:'#F59E0B', gridcolor:'rgba(245,158,11,0.1)', showgrid:false}, legend:{font:{color:'#8BA8C0'}, orientation:'h', y:-0.15}, margin:{t:50, b:70, l:65, r:65} };"
             "  Plotly.newPlot('plot', [t_p10, t_p90, t_p50, t_mob], layout, {responsive:true});"
             "</script>"
         )
         components.html(script_grafica, height=450)
 
     with cr:
-        st.markdown(
-            "<h4 style='color:#22D3EE; font-family:Syne; margin-bottom:16px;'>📊 Resumen Estadístico</h4>",
-            unsafe_allow_html=True
-        )
-
-        # Calcular estadísticas reales desde la proyección
-        p50_list = [r.get('P50',0) for r in proyeccion]
-        p10_list = [r.get('P10',0) for r in proyeccion]
-        p90_list = [r.get('P90',0) for r in proyeccion]
-        mob_list = [r.get('mob',0) for r in proyeccion]
-
+        # ── NUEVA SECCIÓN: RECOMENDACIÓN DE INYECCIÓN QUÍMICA ──
+        st.markdown("<h4 style='color:#22D3EE; font-family:Syne; margin-bottom:16px;'>🧪 Diagnóstico de Inyección CEOR</h4>", unsafe_allow_html=True)
+        
+        # Datos dinámicos para el diagnóstico
+        ppm_optimo = int(d.get('ppm', 1200))
+        lim_psi = int(d.get('lim_psi', 2800))
+        bwpd = int(d.get('bwpd', 350))
+        
+        # Comparativa: Industria vs FlowBio
         diag_data = [
-            ("Meses proyectados",      f"{len(proyeccion)} meses"),
-            ("P50 inicial (mes 1)",    f"{p50_list[0]:,.1f} BOPD"   if p50_list else "—"),
-            ("P50 final",              f"{p50_list[-1]:,.1f} BOPD"  if p50_list else "—"),
-            ("P10 promedio",           f"{sum(p10_list)/len(p10_list):,.1f} BOPD" if p10_list else "—"),
-            ("P90 promedio",           f"{sum(p90_list)/len(p90_list):,.1f} BOPD" if p90_list else "—"),
-            ("Movilidad inicial",      f"{mob_list[0]:.3f}"          if mob_list else "—"),
-            ("Movilidad final",        f"{mob_list[-1]:.3f}"         if mob_list else "—"),
-            ("EUR total P50",          f"{int(sum(p50_list)):,} bbls"),
-            ("EUR total P90",          f"{int(sum(p90_list)):,} bbls"),
+            ("Escenario Base", "<span style='color:#EF4444;'>Polímero HPAM Tradicional</span>"),
+            ("Impacto ESG (HPAM)", "Alta Huella de Carbono"),
+            ("Escenario FlowBio", "<span style='color:#00E5A0; font-weight:800;'>Biopolímero Avanzado (Na-CMC)</span>"),
+            ("Dosificación Óptima", f"{ppm_optimo} ppm"),
+            ("Caudal de Inyección", f"{bwpd} BWPD"),
+            ("Presión Fractura Límite", f"{lim_psi:,} psi"),
+            ("Volumen Poroso (PV)", "0.29 PV"),
+            ("Estado de Compatibilidad", "Óptimo (Resistente a Salinidad)")
         ]
 
-        rows_html = "".join(
-            f"<div class='diag-row'><span class='diag-key'>{k}</span><span class='diag-val'>{v}</span></div>"
-            for k, v in diag_data
-        )
+        rows_html = "".join(f"<div class='diag-row'><span class='diag-key'>{k}</span><span class='diag-val'>{v}</span></div>" for k, v in diag_data)
+        
         st.markdown(
-            "<div style='background:#0D1520; border:1px solid rgba(255,255,255,0.06);"
-            " border-radius:12px; padding:20px;'>" + rows_html + "</div>",
+            f"<div style='background:#0D1520; border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:20px;'>{rows_html}</div>",
             unsafe_allow_html=True
         )
 
