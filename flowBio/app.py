@@ -61,7 +61,6 @@ def clean_text(text):
     return str(text).replace('·', '.').replace('²', '2').encode('latin-1', errors='replace').decode('latin-1')
 
 def generate_corporate_pdf(well, d):
-    # Cálculos necesarios para el PDF
     eur_val = d.get('eur', 0)
     barriles_extra_mes = int(eur_val / 60)
     valor_extra = barriles_extra_mes * 74.5 
@@ -69,32 +68,28 @@ def generate_corporate_pdf(well, d):
     pdf = FPDF()
     pdf.add_page()
     
-    # 1. Fondo Corporativo Oscuro
     pdf.set_fill_color(6, 11, 17)
     pdf.rect(0, 0, 210, 297, 'F')
     
-    # 2. Encabezado Principal
     pdf.set_font('Arial', 'B', 24)
     pdf.set_text_color(255, 255, 255)
     pdf.cell(0, 10, clean_text('FlowBio Executive Report'), 0, 1, 'L')
     
     pdf.set_font('Arial', 'B', 16)
-    pdf.set_text_color(0, 229, 160) # Verde FlowBio
+    pdf.set_text_color(0, 229, 160)
     pdf.cell(0, 10, clean_text(f'Pozo Analizado: {well}'), 0, 1, 'L')
     
     pdf.set_font('Arial', '', 10)
-    pdf.set_text_color(139, 168, 192) # Gris claro
+    pdf.set_text_color(139, 168, 192)
     pdf.cell(0, 8, clean_text(f'Fecha de Simulación: {datetime.now().strftime("%Y-%m-%d %H:%M")}'), 0, 1, 'L')
     
-    # Línea divisoria elegante
     pdf.set_draw_color(0, 229, 160)
     pdf.set_line_width(0.5)
     pdf.line(10, 45, 200, 45)
     pdf.ln(12)
     
-    # --- SECCIÓN 1: IMPACTO FINANCIERO ---
     pdf.set_font('Arial', 'B', 14)
-    pdf.set_text_color(34, 211, 238) # Cyan FlowBio
+    pdf.set_text_color(34, 211, 238)
     pdf.cell(0, 10, clean_text('1. IMPACTO FINANCIERO PROYECTADO'), 0, 1, 'L')
     pdf.ln(2)
     
@@ -107,7 +102,7 @@ def generate_corporate_pdf(well, d):
     ]
     
     pdf.set_fill_color(13, 21, 32)
-    pdf.set_draw_color(30, 41, 59) # Color de borde muy sutil
+    pdf.set_draw_color(30, 41, 59)
     pdf.set_line_width(0.2)
     
     for k, v in fin_data:
@@ -121,9 +116,8 @@ def generate_corporate_pdf(well, d):
         
     pdf.ln(10)
     
-    # --- SECCIÓN 2: INGENIERÍA Y QUÍMICA ---
     pdf.set_font('Arial', 'B', 14)
-    pdf.set_text_color(34, 211, 238) # Cyan FlowBio
+    pdf.set_text_color(34, 211, 238)
     pdf.cell(0, 10, clean_text('2. DIAGNOSTICO Y PRESCRIPCION PIML'), 0, 1, 'L')
     pdf.ln(2)
     
@@ -146,7 +140,6 @@ def generate_corporate_pdf(well, d):
         pdf.set_font('Arial', 'B', 11)
         pdf.cell(90, 10, clean_text(" " + v), border='B', ln=1, align='R', fill=True)
 
-    # Footer
     pdf.set_y(-30)
     pdf.set_font('Arial', 'I', 9)
     pdf.set_text_color(100, 116, 139)
@@ -186,7 +179,6 @@ elif st.session_state.auth and not st.session_state.simulated:
     with c:
         if st.button("🚀 INICIAR SIMULACIÓN Y ANÁLISIS"):
             
-            # Caja visual de consola
             status_box = st.empty()
             progress_bar = st.progress(0)
             
@@ -199,15 +191,13 @@ elif st.session_state.auth and not st.session_state.simulated:
                 "📈 Agente 5 (Consultor): Generando Gemelo Digital Financiero..."
             ]
             
-            # Animación de los agentes trabajando
             consola_texto = ""
             for i, paso in enumerate(pasos_agentes):
                 consola_texto += f"> {paso}<br>"
                 status_box.markdown(f"<div class='console-box'>{consola_texto}</div>", unsafe_allow_html=True)
                 progress_bar.progress((i + 1) * 16)
-                time.sleep(1.2) # Pausa dramática para simular el proceso
+                time.sleep(1.2) 
             
-            # Al terminar la animación, cargamos los datos reales
             consola_texto += "<br><span style='color:#00E5A0;'>✅ Sincronización exitosa. Abriendo Command Center...</span>"
             status_box.markdown(f"<div class='console-box'>{consola_texto}</div>", unsafe_allow_html=True)
             progress_bar.progress(100)
@@ -232,16 +222,18 @@ elif st.session_state.auth and st.session_state.simulated:
             st.session_state.auth = False
             st.session_state.simulated = False
             st.rerun()                     
-# --- LÓGICA DINÁMICA ---
+
+    # --- LÓGICA DINÁMICA CORREGIDA ---
     datos_pozos = st.session_state.all_data
 
     if "dashboard_data" in datos_pozos:
         datos_pozos = datos_pozos["dashboard_data"]
 
-    lista_pozos = [k for k in datos_pozos.keys() if "Well" in k or "Pozo" in k]
+    # FIX: Extraemos los nombres de los pozos directamente para evitar vaciar la lista
+    lista_pozos = list(datos_pozos.keys())
 
     if not lista_pozos:
-        st.error("⚠️ Caché obsoleto. Sincroniza desde Jupyter nuevamente.")
+        st.error("⚠️ La base de datos está vacía. Verifica el archivo JSON en S3.")
         st.stop()
 
     pozo_seleccionado = st.selectbox("📍 Seleccione un pozo para Análisis de Declinación:", lista_pozos)
@@ -250,82 +242,4 @@ elif st.session_state.auth and st.session_state.simulated:
     eur_val = d.get('eur', 0)
     barriles_extra_mes = int(eur_val / 60)
     valor_extra = barriles_extra_mes * 74.5 
-    success_fee = d.get('fee', 0)
-    payback_val = d.get('payback', 0)
-    
-    # FIX: Declaramos la variable de ambas formas para evitar el NameError en el f-string
-    mejora_val = d.get('mejora', 0)
-    mejora = d.get('mejora', 0)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    k1, k2, k3, k4 = st.columns(4)
-    with k1: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">CRUDO INCREMENTAL (MES)</p><p class="kpi-value">+{barriles_extra_mes:,} <span style="font-size:16px;">bbls</span></p><p class="kpi-desc">Producción extra estimada.</p></div>', unsafe_allow_html=True)
-    with k2: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">VALOR EXTRA GENERADO</p><p class="kpi-value">${valor_extra:,.0f}</p><p class="kpi-desc">Ingreso adicional bruto.</p></div>', unsafe_allow_html=True)
-    with k3: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">SUCCESS FEE</p><p class="kpi-value">${success_fee:,.0f}</p><p class="kpi-desc">Nuestra tarifa por éxito.</p></div>', unsafe_allow_html=True)
-    with k4: 
-        st.markdown(f'<div class="kpi-box"><p class="kpi-label">PAYBACK</p><p class="kpi-value">{payback_val} <span style="font-size:16px;">Meses</span></p><p class="kpi-desc">Retorno de inversión.</p></div>', unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    cl, cr = st.columns([2.3, 1.7])
-    
-    with cl:
-        script_grafica = f"""
-        <script src='https://cdn.plot.ly/plotly-2.27.0.min.js'></script>
-        <div id='plot' style='height:420px; background:#0D1520; border-radius:12px; border:1px solid rgba(255,255,255,0.05); box-shadow: 0 8px 16px rgba(0,0,0,0.4);'></div>
-        <script>
-            var x = Array.from({{length:48}}, (_,i)=>i);
-            var bopd_base = 350; 
-            var mejora_js = {mejora_val} / 100;
-            
-            var y_base = x.map(i => bopd_base * Math.exp(-0.06 * i)); 
-            var y_flowbio = x.map(i => i < 5 ? y_base[i] : y_base[i] + (bopd_base * mejora_js * Math.exp(-0.015 * (i-5))));
-            
-            var trace1 = {{
-                x: x, y: y_base, name: 'Status Quo', type: 'scatter',
-                line: {{color: '#EF4444', dash: 'dot', width: 2}},
-                hovertemplate: '<b>Status Quo:</b> %{{y:.1f}} bbl/d<extra></extra>'
-            }};
-            
-            var trace2 = {{
-                x: x, y: y_flowbio, name: 'FlowBio EOR', type: 'scatter',
-                line: {{color: '#00E5A0', width: 3}}, fill: 'tonexty', fillcolor: 'rgba(0,229,160,0.12)',
-                hovertemplate: '<b>FlowBio:</b> %{{y:.1f}} bbl/d<extra></extra>'
-            }};
-            
-            var layout = {{
-                title: {{text: '<b>Curva de Declinación y Recuperación (4 Años)</b>', font: {{color: '#FFFFFF', family: 'Syne', size: 14}}, x: 0.05, y: 0.95}},
-                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: {{color: '#8BA8C0', family: 'DM Mono', size: 10}}, 
-                margin: {{t:60, b:40, l:50, r:20}},
-                xaxis: {{title: 'MESES', gridcolor: '#152335', zeroline: false}}, yaxis: {{title: 'BOPD', gridcolor: '#152335', zeroline: false}},
-                showlegend: true,
-                legend: {{orientation: 'h', y: 1.12, x: 1, xanchor: 'right', bgcolor: 'rgba(0,0,0,0)', font: {{color: '#E2E8F0'}}}},
-                hovermode: 'x unified',
-                annotations: [{{x: 5, y: y_base[5], xref: 'x', yref: 'y', text: 'INYECCIÓN PIML', showarrow: true, arrowhead: 2, arrowsize: 1, arrowwidth: 1.5, ax: 0, ay: -50, font: {{color: '#22D3EE', family: 'DM Mono', size: 9}}, arrowcolor: '#22D3EE'}}]
-            }};
-            Plotly.newPlot('plot', [trace1, trace2], layout, {{responsive: true, displayModeBar: false}});
-        </script>
-        """
-        components.html(script_grafica, height=450)
-        
-    with cr:
-        html_parts = [
-            "<div style='background:#0D1520; padding:28px; border-radius:12px; border:1px solid rgba(0,229,160,0.3); height:420px; display:flex; flex-direction:column; justify-content:space-between;'>",
-            "<div>",
-            "<p style='color:#00E5A0; font-family:\"DM Mono\"; font-weight:800; font-size:11px; letter-spacing:1.5px; margin-bottom:20px;'>⚡ DIAGNÓSTICO DE INYECCIÓN</p>",
-            f"<p style='font-family:\"Syne\"; font-size:16px; font-weight:700; color:#22D3EE; margin-bottom:2px;'>🧪 {d.get('quimico', 'Polímero Avanzado').upper()}</p>",
-            f"<p style='font-family:\"Inter\"; font-size:12px; color:#8BA8C0; margin-top:0px; margin-bottom:15px;'>Dosificación óptima: <b style='color:#E2E8F0'>{d.get('ppm', 1500)} ppm</b> &nbsp;|&nbsp; PV: <b style='color:#E2E8F0'>{d.get('vol_pv', 0.29)}</b></p>",
-            f"<p style='font-family:\"Syne\"; font-size:16px; font-weight:700; color:#22D3EE; margin-bottom:2px;'>🌊 PARÁMETROS DE BOMBEO</p>",
-            f"<p style='font-family:\"Inter\"; font-size:12px; color:#8BA8C0; margin-top:0px; margin-bottom:15px;'>Caudal objetivo: <b style='color:#E2E8F0'>{d.get('bwpd', 350)} BWPD</b><br>Presión máxima (Fractura): <b style='color:#EF4444'>{d.get('lim_psi', 3000):,} psi</b></p>",
-            "</div><div><hr style='border:none; border-top:1px dashed rgba(255,255,255,0.1); margin:15px 0;'>",
-            f"<p style='color:#64748B; font-family:\"DM Mono\"; font-size:10px; font-weight:600; letter-spacing:1px;'>IMPACTO TOTAL ACUMULADO (EUR):</p>",
-            f"<p style='color:#00E5A0; font-family:\"Syne\"; font-size:36px; font-weight:800; margin:0; line-height:1;'>{d.get('eur', 0):,} <span style='font-size:14px; color:#64748B; font-family:\"DM Mono\";'>bbls</span></p>",
-            "</div></div>"
-        ]
-        st.markdown("".join(html_parts), unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        st.download_button("📥 DESCARGAR REPORTE EJECUTIVO PDF", data=generate_corporate_pdf(pozo_seleccionado, d), file_name=f"Reporte_FlowBio_{pozo_seleccionado}.pdf", mime="application/pdf")
+    success_fee =
