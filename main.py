@@ -10,7 +10,7 @@ from groq import Groq  # type: ignore
 warnings.filterwarnings("ignore")
 
 POZOS_A_SIMULAR = 100  
-GROQ_API_KEY = "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"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 BUCKET = "flowbio-data-lake-v2-627807503177-us-east-2-an"
 REGION = "us-east-2"
 AGENTS_PREFIX = "agentes/"
